@@ -1,10 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-const PUBLIC_PATHS = ['/login']
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Nunca interceptar rotas de API nem logout — deixa passar direto
+  if (pathname.startsWith('/api/') || pathname.startsWith('/logout')) {
+    return NextResponse.next()
+  }
 
   let response = NextResponse.next({
     request: { headers: request.headers },
@@ -29,21 +32,19 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isPublic = PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '?'))
-
-  // Rota raiz sempre vai para login
+  // Rota raiz → redireciona conforme estado de auth
   if (pathname === '/') {
     if (user) return NextResponse.redirect(new URL('/admin', request.url))
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Logado tentando acessar login → vai para /admin
+  // Logado tentando acessar /login → manda para /admin (evita loop)
   if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
-  // Não logado em rota protegida → vai para /login
-  if (!user && !isPublic) {
+  // Não logado em rota protegida → manda para /login preservando destino
+  if (!user && pathname !== '/login') {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
@@ -54,6 +55,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Exclui: arquivos estáticos, imagens, _next, API routes, logout
+    '/((?!_next/static|_next/image|favicon.ico|api/|logout|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
