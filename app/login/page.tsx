@@ -28,7 +28,7 @@ function LoginForm() {
     }
 
     const next = searchParams.get('next') || '/admin'
-    router.replace(next)
+    router.replace('/admin')
   }
 
   return (
