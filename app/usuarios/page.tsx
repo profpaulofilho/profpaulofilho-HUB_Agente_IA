@@ -25,7 +25,7 @@ export default async function UsuariosPage() {
         {/* TOPBAR */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/senai-logo.png" alt="SENAI" style={{ height: 34 }} />
+            <img src="/senai-logo.png" alt="SENAI" style={{ height: 36 }} />
             <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }} />
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Usuários do portal</span>
           </div>
