@@ -39,7 +39,7 @@ export default async function NovoAgentePage() {
       <div style={{ maxWidth:760, margin:'0 auto' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <img src="/senai-logo.png" alt="SENAI" style={{ height:30, filter:'brightness(0) invert(1)', opacity:.8 }} />
+            <img src="/senai-logo.png" alt="SENAI" style={{ height:30, opacity:1 }} />
           </div>
           <Link href="/admin" style={{ padding:'8px 16px', borderRadius:10, fontSize:12, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.7)' }}>← Voltar</Link>
         </div>

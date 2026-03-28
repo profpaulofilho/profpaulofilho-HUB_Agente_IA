@@ -83,7 +83,7 @@ function LoginForm() {
       }}>
         {/* Logo SENAI */}
         <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-          <img src="/senai-logo.png" alt="SENAI" style={{ height:48, filter:'brightness(0) invert(1)', opacity:.92 }} />
+          <img src="/senai-logo.png" alt="SENAI" style={{ height:48, opacity:1 }} />
           <div style={{ width:1, height:36, background:'rgba(255,255,255,0.12)' }} />
           <span style={{ fontSize:11, color:'rgba(255,255,255,0.35)', fontWeight:400, lineHeight:1.4, maxWidth:110 }}>
             Portal Interno<br/>Bahia · 2026

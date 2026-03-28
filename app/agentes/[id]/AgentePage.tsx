@@ -181,7 +181,7 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
         justifyContent:'space-between', gap:12, flexShrink:0, flexWrap:'wrap',
       }}>
         <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-          <img src="/senai-logo.png" alt="SENAI" style={{ height:30, filter:'brightness(0) invert(1)', opacity:.8 }} />
+          <img src="/senai-logo.png" alt="SENAI" style={{ height:30, opacity:1 }} />
           <div style={{ width:1, height:24, background:'rgba(255,255,255,0.1)' }} />
           <div>
             <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{catName}</div>

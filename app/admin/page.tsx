@@ -79,7 +79,7 @@ export default async function AdminPage() {
         {/* TOPBAR */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, gap:12, flexWrap:'wrap' }}>
           <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-            <img src="/senai-logo.png" alt="SENAI" style={{ height:36, filter:'brightness(0) invert(1)', opacity:.85 }} />
+            <img src="/senai-logo.png" alt="SENAI" style={{ height:36, opacity:1 }} />
             <div style={{ width:1, height:28, background:'rgba(255,255,255,0.1)' }} />
             <span style={{ fontSize:12, color:'rgba(255,255,255,0.4)', fontWeight:300 }}>Hub de Agentes IA</span>
           </div>
