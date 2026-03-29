@@ -8,7 +8,15 @@ export default async function AgenteDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
+
+  let supabase: any
+  try {
+    const { createClient: create } = await import('../../../lib/supabase/server')
+    supabase = await create()
+  } catch {
+    redirect('/login')
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
@@ -20,22 +28,34 @@ export default async function AgenteDetailPage({
 
   if (agentError || !agent) redirect('/admin')
 
-  // Tenta buscar assistant_id — se coluna não existir, ignora silenciosamente
+  // Busca assistant_id — ignora se coluna não existir
   let assistantId: string | null = null
-  const { data: extra, error: extraError } = await supabase
-    .from('agents')
-    .select('assistant_id')
-    .eq('id', id)
-    .single()
+  try {
+    const { data: extra } = await supabase
+      .from('agents')
+      .select('assistant_id')
+      .eq('id', id)
+      .single()
+    if (extra?.assistant_id) assistantId = extra.assistant_id
+  } catch { /* coluna não existe */ }
 
-  if (!extraError && extra?.assistant_id) {
-    assistantId = extra.assistant_id
+  // Registra acesso sem await para não bloquear renderização
+  supabase.from('agent_access_logs').insert({
+    agent_id: agent.id,
+    user_id: user.id,
+    source: 'portal',
+  }).catch(() => {})
+
+  const agentData = {
+    id: agent.id,
+    name: agent.name || '',
+    description: agent.description || null,
+    provider: agent.provider || '',
+    platform: agent.platform || '',
+    external_url: agent.external_url || '',
+    assistant_id: assistantId,
+    categories: agent.categories || null,
   }
 
-  // Registra acesso
-  await supabase.from('agent_access_logs').insert({
-    agent_id: agent.id, user_id: user.id, source: 'portal',
-  })
-
-  return <AgentePage agent={{ ...agent, assistant_id: assistantId } as any} userEmail={user.email || ''} />
+  return <AgentePage agent={agentData} userEmail={user.email || ''} />
 }
