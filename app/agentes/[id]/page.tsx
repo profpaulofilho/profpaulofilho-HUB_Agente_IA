@@ -14,7 +14,7 @@ export default async function AgenteDetailPage({
 
   const { data: agent } = await supabase
     .from('agents')
-    .select(`id, name, description, provider, platform, external_url, categories(id, name)`)
+    .select(`id, name, description, provider, platform, external_url, assistant_id, categories(id, name)`)
     .eq('id', id)
     .single()
 
