@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Nunca interceptar API routes nem logout
   if (pathname.startsWith('/api/') || pathname.startsWith('/logout')) {
     return NextResponse.next()
   }
@@ -29,18 +30,25 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Usa getSession() no middleware — mais confiável para verificar
+  // se há uma sessão ativa sem depender de chamada externa à API
+  const { data: { session } } = await supabase.auth.getSession()
+  const isLoggedIn = !!session
 
+  // Rota raiz
   if (pathname === '/') {
-    if (user) return NextResponse.redirect(new URL('/admin', request.url))
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(
+      new URL(isLoggedIn ? '/admin' : '/login', request.url)
+    )
   }
 
-  if (user && pathname === '/login') {
+  // Logado tentando acessar /login → vai para /admin
+  if (isLoggedIn && pathname === '/login') {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
-  if (!user && pathname !== '/login') {
+  // Não logado em rota protegida → vai para /login (sem ?next para evitar loops)
+  if (!isLoggedIn && pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

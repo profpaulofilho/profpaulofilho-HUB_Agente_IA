@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '../../lib/supabase/client'
 
-function LoginForm() {
+export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const supabase = createClient()
 
   const [email, setEmail] = useState('')
@@ -27,7 +26,6 @@ function LoginForm() {
       return
     }
 
-    const next = searchParams.get('next') || '/admin'
     router.replace('/admin')
   }
 
@@ -281,10 +279,3 @@ function LoginForm() {
   )
 }
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginForm />
-    </Suspense>
-  )
-}
