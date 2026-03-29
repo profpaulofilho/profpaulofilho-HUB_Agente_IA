@@ -28,80 +28,104 @@ export async function POST(request: NextRequest) {
   if (!openaiKey)
     return NextResponse.json({ error: 'OPENAI_API_KEY não configurada.' }, { status: 500 })
 
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${openaiKey}`,
+    'Authorization': `Bearer ${openaiKey}`,
     'OpenAI-Beta': 'assistants=v2',
   }
 
-  // Se tem assistantId → usa Assistants API com file search
+  // ── ASSISTANTS API ──────────────────────────────────────────────
   if (assistantId) {
     try {
       // 1. Cria ou reutiliza thread
       let currentThreadId = threadId
       if (!currentThreadId) {
         const threadRes = await fetch('https://api.openai.com/v1/threads', {
-          method: 'POST', headers,
+          method: 'POST',
+          headers,
           body: JSON.stringify({}),
         })
-        if (!threadRes.ok) throw new Error('Erro ao criar thread')
         const threadData = await threadRes.json()
+        if (!threadRes.ok) {
+          return NextResponse.json({
+            error: `Erro ao criar thread: ${threadData?.error?.message || threadRes.status}`
+          }, { status: 502 })
+        }
         currentThreadId = threadData.id
       }
 
-      // 2. Adiciona a última mensagem do usuário na thread
-      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
+      // 2. Adiciona mensagem do usuário
+      const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')
       if (!lastUserMsg) return NextResponse.json({ error: 'Sem mensagem do usuário' }, { status: 400 })
 
-      await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
-        method: 'POST', headers,
+      const msgRes = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
+        method: 'POST',
+        headers,
         body: JSON.stringify({ role: 'user', content: lastUserMsg.content }),
       })
+      if (!msgRes.ok) {
+        const msgErr = await msgRes.json()
+        return NextResponse.json({
+          error: `Erro ao adicionar mensagem: ${msgErr?.error?.message || msgRes.status}`
+        }, { status: 502 })
+      }
 
-      // 3. Dispara o run
+      // 3. Cria run (sem passar model — o Assistant já tem o modelo configurado)
       const runRes = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs`, {
-        method: 'POST', headers,
+        method: 'POST',
+        headers,
         body: JSON.stringify({ assistant_id: assistantId }),
       })
-      if (!runRes.ok) throw new Error('Erro ao criar run')
       const runData = await runRes.json()
+      if (!runRes.ok) {
+        return NextResponse.json({
+          error: `Erro ao criar run: ${runData?.error?.message || runRes.status}`
+        }, { status: 502 })
+      }
       const runId = runData.id
 
-      // 4. Polling até completar (max 30s)
+      // 4. Polling até completar (max 60s)
       let status = runData.status
       let attempts = 0
-      while (!['completed', 'failed', 'cancelled', 'expired'].includes(status) && attempts < 30) {
+      while (!['completed', 'failed', 'cancelled', 'expired'].includes(status) && attempts < 60) {
         await new Promise(r => setTimeout(r, 1000))
-        const pollRes = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs/${runId}`, { headers })
+        const pollRes = await fetch(
+          `https://api.openai.com/v1/threads/${currentThreadId}/runs/${runId}`,
+          { headers }
+        )
         const pollData = await pollRes.json()
         status = pollData.status
         attempts++
       }
 
       if (status !== 'completed') {
-        return NextResponse.json({ error: `Run finalizado com status: ${status}` }, { status: 502 })
+        return NextResponse.json({
+          error: `Processamento encerrou com status: ${status}. Tente novamente.`
+        }, { status: 502 })
       }
 
-      // 5. Busca mensagens da thread
+      // 5. Busca última mensagem do assistente
       const msgsRes = await fetch(
         `https://api.openai.com/v1/threads/${currentThreadId}/messages?order=desc&limit=1`,
         { headers }
       )
       const msgsData = await msgsRes.json()
       const lastMsg = msgsData.data?.[0]
-      const content = lastMsg?.content?.[0]?.text?.value || 'Sem resposta.'
+      const rawContent = lastMsg?.content?.[0]?.text?.value || 'Sem resposta.'
 
-      // Remove annotations de citação de arquivo [índice†fonte]
-      const cleanContent = content.replace(/【\d+:\d+†[^】]*】/g, '').trim()
+      // Remove anotações de citação de arquivo 【N:N†fonte】
+      const content = rawContent.replace(/【\d+:\d+†[^】]*】/g, '').trim()
 
-      return NextResponse.json({ content: cleanContent, threadId: currentThreadId })
+      return NextResponse.json({ content, threadId: currentThreadId })
 
     } catch (e: any) {
-      return NextResponse.json({ error: 'Erro Assistants API: ' + (e?.message || 'desconhecido') }, { status: 500 })
+      return NextResponse.json({
+        error: 'Erro interno Assistants API: ' + (e?.message || 'desconhecido')
+      }, { status: 500 })
     }
   }
 
-  // Sem assistantId → fallback para gpt-4o-mini simples
+  // ── FALLBACK: Chat Completions simples ──────────────────────────
   const systemPrompt = agentDescription
     ? `Você é ${agentName}. ${agentDescription} Responda sempre em português do Brasil.`
     : `Você é ${agentName}, um assistente do SENAI Bahia. Responda sempre em português do Brasil.`
@@ -117,11 +141,12 @@ export async function POST(request: NextRequest) {
         temperature: 0.7,
       }),
     })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      return NextResponse.json({ error: err?.error?.message || `Erro OpenAI: HTTP ${res.status}` }, { status: 502 })
-    }
     const data = await res.json()
+    if (!res.ok) {
+      return NextResponse.json({
+        error: data?.error?.message || `Erro OpenAI: HTTP ${res.status}`
+      }, { status: 502 })
+    }
     return NextResponse.json({ content: data.choices?.[0]?.message?.content || 'Sem resposta.' })
   } catch (e: any) {
     return NextResponse.json({ error: 'Erro interno: ' + (e?.message || 'desconhecido') }, { status: 500 })
