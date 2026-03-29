@@ -210,7 +210,7 @@ export default async function AdminPage() {
                           💬 Conversar
                         </Link>
                       ) : (
-                        <a href={agent.external_url} target="_blank" rel="noopener noreferrer" className="open-btn" style={{ padding: '10px 18px', borderRadius: 12, flexShrink: 0, background: btnBg, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: btnShadow, transition: 'transform 0.15s, opacity 0.2s', whiteSpace: 'nowrap' }}>
+                        <a href="https://gerador-descritivo-v2.onrender.com/" target="_blank" rel="noopener noreferrer" className="open-btn" style={{ padding: '10px 18px', borderRadius: 12, flexShrink: 0, background: btnBg, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: btnShadow, transition: 'transform 0.15s, opacity 0.2s', whiteSpace: 'nowrap' }}>
                           ↗ Abrir
                         </a>
                       )}
