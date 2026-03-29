@@ -35,7 +35,7 @@ export default async function NovoAgentePage() {
 
   return (
     <main style={{ minHeight:'100vh', background:'#05080f', padding:'24px' }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap'); * { font-family: 'Sora', sans-serif; } input,textarea,select { outline:none; } input:focus,textarea:focus,select:focus { border-color: rgba(37,99,235,0.5) !important; background: rgba(37,99,235,0.06) !important; }`}</style>
+      <style>{` * { font-family: 'Sora', sans-serif; } input,textarea,select { outline:none; } input:focus,textarea:focus,select:focus { border-color: rgba(37,99,235,0.5) !important; background: rgba(37,99,235,0.06) !important; }`}</style>
       <div style={{ maxWidth:760, margin:'0 auto' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>

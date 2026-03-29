@@ -16,7 +16,7 @@ export default async function UsuariosPage() {
   return (
     <main style={{ minHeight: '100vh', background: '#05080f', padding: '24px' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap');
+        
         * { font-family: 'Sora', sans-serif; }
         .nav-btn:hover { background: rgba(255,255,255,0.1) !important; }
       `}</style>

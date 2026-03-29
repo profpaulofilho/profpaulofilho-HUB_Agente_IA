@@ -8,14 +8,7 @@ export default async function AgenteDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-
-  let supabase: any
-  try {
-    const { createClient: create } = await import('../../../lib/supabase/server')
-    supabase = await create()
-  } catch {
-    redirect('/login')
-  }
+  const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -28,34 +21,38 @@ export default async function AgenteDetailPage({
 
   if (agentError || !agent) redirect('/admin')
 
-  // Busca assistant_id — ignora se coluna não existir
   let assistantId: string | null = null
-  try {
-    const { data: extra } = await supabase
-      .from('agents')
-      .select('assistant_id')
-      .eq('id', id)
-      .single()
-    if (extra?.assistant_id) assistantId = extra.assistant_id
-  } catch { /* coluna não existe */ }
+  const { data: extra } = await supabase
+    .from('agents')
+    .select('assistant_id')
+    .eq('id', id)
+    .single()
+  if (extra?.assistant_id) assistantId = extra.assistant_id
 
-  // Registra acesso sem await para não bloquear renderização
-  supabase.from('agent_access_logs').insert({
-    agent_id: agent.id,
-    user_id: user.id,
-    source: 'portal',
-  }).catch(() => {})
+  // Registra acesso sem bloquear a renderização
+  void (async () => {
+    try {
+      await supabase.from('agent_access_logs').insert({
+        agent_id: agent.id,
+        user_id: user.id,
+        source: 'portal',
+      })
+    } catch { /* ignora */ }
+  })()
 
-  const agentData = {
-    id: agent.id,
-    name: agent.name || '',
-    description: agent.description || null,
-    provider: agent.provider || '',
-    platform: agent.platform || '',
-    external_url: agent.external_url || '',
-    assistant_id: assistantId,
-    categories: agent.categories || null,
-  }
-
-  return <AgentePage agent={agentData} userEmail={user.email || ''} />
+  return (
+    <AgentePage
+      agent={{
+        id: String(agent.id),
+        name: String(agent.name || ''),
+        description: agent.description ? String(agent.description) : null,
+        provider: String(agent.provider || ''),
+        platform: String(agent.platform || ''),
+        external_url: String(agent.external_url || ''),
+        assistant_id: assistantId,
+        categories: agent.categories ?? null,
+      }}
+      userEmail={String(user.email || '')}
+    />
+  )
 }

@@ -267,7 +267,7 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#05080f', overflow: 'hidden' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap');
+        
         * { box-sizing: border-box; font-family: 'Sora', sans-serif; }
         @keyframes typing-bounce { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-5px);opacity:1} }
         .ext-btn:hover { opacity: 0.75 !important; }
