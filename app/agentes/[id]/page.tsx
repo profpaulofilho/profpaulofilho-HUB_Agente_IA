@@ -20,7 +20,7 @@ export default async function AgenteDetailPage({
 
   if (agentError || !agent) redirect('/admin')
 
-  // Tenta buscar assistant_id — se der erro (coluna não existe), ignora
+  // Tenta buscar assistant_id — se coluna não existir, ignora silenciosamente
   let assistantId: string | null = null
   const { data: extra, error: extraError } = await supabase
     .from('agents')
@@ -32,10 +32,10 @@ export default async function AgenteDetailPage({
     assistantId = extra.assistant_id
   }
 
-  // Registra acesso — ignora erro se tabela não tiver a estrutura esperada
+  // Registra acesso
   await supabase.from('agent_access_logs').insert({
     agent_id: agent.id, user_id: user.id, source: 'portal',
-  }).then(() => {}).catch(() => {})
+  })
 
   return <AgentePage agent={{ ...agent, assistant_id: assistantId } as any} userEmail={user.email || ''} />
 }
