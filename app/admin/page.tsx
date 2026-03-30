@@ -222,7 +222,110 @@ export default async function AdminPage() {
           </div>
         )}
 
-        {/* CHARTS */}
+        {/* PIZZA CHARTS */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          {/* Pizza por agente */}
+          <div style={{ ...S.card, ...S.pad }}>
+            <h2 style={S.h2}>Uso por agente</h2>
+            <p style={{ ...S.sub, marginBottom: 20 }}>Distribuição de acessos no mês</p>
+            {topAgents.length > 0 ? (
+              <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
+                  <svg viewBox="0 0 36 36" style={{ width: 140, height: 140, transform: 'rotate(-90deg)' }}>
+                    {(() => {
+                      const total = topAgents.reduce((s, a) => s + a.total, 0)
+                      const colors = ['#3b82f6','#8b5cf6','#06b6d4','#22c55e','#f59e0b','#ef4444']
+                      let offset = 0
+                      return topAgents.slice(0,6).map((item, i) => {
+                        const pct = (item.total / total) * 100
+                        const el = (
+                          <circle key={i} cx="18" cy="18" r="15.9154943"
+                            fill="none" stroke={colors[i % colors.length]}
+                            strokeWidth="3.5"
+                            strokeDasharray={`${pct} ${100 - pct}`}
+                            strokeDashoffset={-offset}
+                          />
+                        )
+                        offset += pct
+                        return el
+                      })
+                    })()}
+                  </svg>
+                  <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#60a5fa', fontFamily: "'JetBrains Mono',monospace" }}>{topAgents.reduce((s,a)=>s+a.total,0)}</div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>acessos</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1, display: 'grid', gap: 7 }}>
+                  {topAgents.slice(0,5).map((item, i) => {
+                    const colors = ['#3b82f6','#8b5cf6','#06b6d4','#22c55e','#f59e0b']
+                    const total = topAgents.reduce((s,a)=>s+a.total,0)
+                    const pct = Math.round((item.total/total)*100)
+                    return (
+                      <div key={item.name} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background:colors[i], flexShrink:0 }}/>
+                        <div style={{ flex:1, fontSize:11, color:'rgba(255,255,255,0.6)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.name.replace(/^IA\s*[-–]\s*/,'')}</div>
+                        <div style={{ fontSize:11, fontWeight:700, color:colors[i], fontFamily:"'JetBrains Mono',monospace", flexShrink:0 }}>{pct}%</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : <p style={{ color:'rgba(255,255,255,0.25)',fontSize:13 }}>Sem dados ainda.</p>}
+          </div>
+
+          {/* Pizza por categoria */}
+          <div style={{ ...S.card, ...S.pad }}>
+            <h2 style={S.h2}>Uso por categoria</h2>
+            <p style={{ ...S.sub, marginBottom: 20 }}>Distribuição de acessos no mês</p>
+            {topCategories.length > 0 ? (
+              <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
+                  <svg viewBox="0 0 36 36" style={{ width: 140, height: 140, transform: 'rotate(-90deg)' }}>
+                    {(() => {
+                      const total = topCategories.reduce((s, a) => s + a.total, 0)
+                      const colors = ['#f59e0b','#3b82f6','#22c55e','#ef4444','#8b5cf6']
+                      let offset = 0
+                      return topCategories.slice(0,5).map((item, i) => {
+                        const pct = (item.total / total) * 100
+                        const el = (
+                          <circle key={i} cx="18" cy="18" r="15.9154943"
+                            fill="none" stroke={colors[i % colors.length]}
+                            strokeWidth="3.5"
+                            strokeDasharray={`${pct} ${100 - pct}`}
+                            strokeDashoffset={-offset}
+                          />
+                        )
+                        offset += pct
+                        return el
+                      })
+                    })()}
+                  </svg>
+                  <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#f59e0b', fontFamily: "'JetBrains Mono',monospace" }}>{topCategories.reduce((s,a)=>s+a.total,0)}</div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>acessos</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1, display: 'grid', gap: 7 }}>
+                  {topCategories.slice(0,5).map((item, i) => {
+                    const colors = ['#f59e0b','#3b82f6','#22c55e','#ef4444','#8b5cf6']
+                    const total = topCategories.reduce((s,a)=>s+a.total,0)
+                    const pct = Math.round((item.total/total)*100)
+                    return (
+                      <div key={item.name} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background:colors[i], flexShrink:0 }}/>
+                        <div style={{ flex:1, fontSize:11, color:'rgba(255,255,255,0.6)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.name}</div>
+                        <div style={{ fontSize:11, fontWeight:700, color:colors[i], fontFamily:"'JetBrains Mono',monospace", flexShrink:0 }}>{pct}%</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : <p style={{ color:'rgba(255,255,255,0.25)',fontSize:13 }}>Sem dados ainda.</p>}
+          </div>
+        </div>
+
+        {/* CHARTS — bar + resumo */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 16, marginBottom: 16 }}>
           <div style={{ ...S.card, ...S.pad }}>
             <h2 style={S.h2}>Agentes mais usados</h2>

@@ -1,11 +1,18 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
+// Rotas públicas — sem autenticação
+const PUBLIC_PATHS = ['/login', '/mqct']
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Nunca interceptar API routes e logout
   if (pathname.startsWith('/api/') || pathname.startsWith('/logout')) {
+    return NextResponse.next()
+  }
+
+  // Página pública MQCT e subpaths
+  if (pathname === '/mqct' || pathname.startsWith('/mqct/')) {
     return NextResponse.next()
   }
 
@@ -30,15 +37,12 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Tenta getSession primeiro (lê cookie local, mais rápido)
-  // Se falhar, tenta getUser (valida com servidor)
   let isLoggedIn = false
   try {
     const { data: { session } } = await supabase.auth.getSession()
     if (session) {
       isLoggedIn = true
     } else {
-      // Fallback: tenta getUser
       const { data: { user } } = await supabase.auth.getUser()
       isLoggedIn = !!user
     }
@@ -46,17 +50,14 @@ export async function middleware(request: NextRequest) {
     isLoggedIn = false
   }
 
-  // Rota raiz
   if (pathname === '/') {
     return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
   }
 
-  // Já logado tentando acessar /login
   if (isLoggedIn && pathname === '/login') {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
-  // Não logado em rota protegida
   if (!isLoggedIn && pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
