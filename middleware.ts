@@ -1,17 +1,15 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-// Rotas públicas — sem autenticação
-const PUBLIC_PATHS = ['/login', '/mqct']
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // API routes e logout — passar direto
   if (pathname.startsWith('/api/') || pathname.startsWith('/logout')) {
     return NextResponse.next()
   }
 
-  // Página pública MQCT e subpaths
+  // Página pública MQCT — sem auth
   if (pathname === '/mqct' || pathname.startsWith('/mqct/')) {
     return NextResponse.next()
   }
@@ -37,27 +35,32 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Verificar sessão — getUser é mais confiável pois renova o token automaticamente
   let isLoggedIn = false
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      isLoggedIn = true
-    } else {
-      const { data: { user } } = await supabase.auth.getUser()
-      isLoggedIn = !!user
-    }
+    const { data: { user } } = await supabase.auth.getUser()
+    isLoggedIn = !!user
   } catch {
-    isLoggedIn = false
+    // Se getUser falhar, tenta getSession como fallback
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      isLoggedIn = !!session
+    } catch {
+      isLoggedIn = false
+    }
   }
 
+  // Rota raiz
   if (pathname === '/') {
     return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
   }
 
+  // Logado tentando acessar /login
   if (isLoggedIn && pathname === '/login') {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
+  // Não logado em rota protegida
   if (!isLoggedIn && pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }

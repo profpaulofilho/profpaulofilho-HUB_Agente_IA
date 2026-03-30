@@ -1,9 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '../../lib/supabase/client'
 import Link from 'next/link'
+
+// Busca top 5 agentes do Supabase via API pública
+function useTopAgents() {
+  const [data, setData] = useState<{name:string,total:number}[]>([])
+  useEffect(() => {
+    const supabase = createClient()
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0)
+    supabase
+      .from('agent_access_logs')
+      .select('agents(name)')
+      .gte('accessed_at', startOfMonth.toISOString())
+      .then(({ data: logs }) => {
+        if (!logs) return
+        const map = new Map<string,number>()
+        logs.forEach((log: any) => {
+          const name = Array.isArray(log.agents) ? log.agents[0]?.name : log.agents?.name
+          if (name) map.set(name, (map.get(name)||0)+1)
+        })
+        const sorted = Array.from(map.entries())
+          .map(([name,total]) => ({name: name.replace(/^IA\s*[-–]\s*/,''), total}))
+          .sort((a,b) => b.total - a.total)
+          .slice(0,5)
+        setData(sorted)
+      })
+      .catch(() => {})
+  }, [])
+  return data
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -12,116 +41,141 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const topAgents = useTopAgents()
+  const maxBar = topAgents[0]?.total || 1
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError('E-mail ou senha inválidos.'); setLoading(false); return }
     router.replace('/admin')
   }
 
+  const COLORS = ['#3b82f6','#8b5cf6','#06b6d4','#22c55e','#f59e0b']
+
   return (
-    <main style={{ minHeight:'100vh', background:'#05080f', display:'grid', gridTemplateColumns:'1fr 460px', position:'relative', overflow:'hidden' }}>
+    <main style={{ minHeight:'100vh', background:'#05080f', display:'grid', gridTemplateColumns:'1fr 440px', position:'relative', overflow:'hidden' }}>
       <style>{`
         @keyframes gridShift{0%{background-position:0 0}100%{background-position:40px 40px}}
-        @keyframes orbPulse{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:.35;transform:scale(1.08)}}
+        @keyframes orbPulse{0%,100%{opacity:.18;transform:scale(1)}50%{opacity:.3;transform:scale(1.08)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
-        @keyframes pulse2{0%,100%{box-shadow:0 0 0 0 rgba(37,99,235,0.4)}50%{box-shadow:0 0 0 8px rgba(37,99,235,0)}}
-        .anim-fadeup{animation:fadeUp 0.7s ease forwards}
-        .anim-slideIn{animation:slideIn 0.5s ease forwards}
-        .feat-card:hover{background:rgba(37,99,235,0.12)!important;border-color:rgba(37,99,235,0.3)!important}
+        @keyframes barGrow{from{height:0}to{height:var(--h)}}
         .btn-login:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 12px 32px rgba(37,99,235,0.5)!important}
         .form-input:focus{border-color:rgba(37,99,235,0.5)!important;background:rgba(37,99,235,0.06)!important;outline:none}
-        .mqct-card:hover{background:rgba(37,99,235,0.18)!important;border-color:rgba(37,99,235,0.5)!important;transform:translateY(-3px);box-shadow:0 16px 40px rgba(37,99,235,0.3)!important}
-        .mqct-card{transition:all 0.25s!important}
-        @media(max-width:768px){.login-grid{grid-template-columns:1fr!important}.left-panel{display:none!important}}
+        .mqct-btn:hover{background:rgba(37,99,235,0.22)!important;border-color:rgba(37,99,235,0.55)!important;transform:translateY(-2px);box-shadow:0 12px 32px rgba(37,99,235,0.25)!important}
+        .mqct-btn{transition:all 0.22s!important}
+        @media(max-width:860px){.login-left{display:none!important}}
       `}</style>
 
-      {/* Orbs */}
-      <div style={{position:'absolute',width:500,height:500,borderRadius:'50%',background:'#1d4ed8',filter:'blur(120px)',opacity:.18,top:-150,right:380,animation:'orbPulse 7s ease-in-out infinite',pointerEvents:'none'}}/>
-      <div style={{position:'absolute',width:350,height:350,borderRadius:'50%',background:'#7c3aed',filter:'blur(100px)',opacity:.14,bottom:-100,left:-80,animation:'orbPulse 9s ease-in-out infinite 3s',pointerEvents:'none'}}/>
-      <div style={{position:'absolute',width:200,height:200,borderRadius:'50%',background:'#0891b2',filter:'blur(80px)',opacity:.12,top:'40%',left:'38%',animation:'orbPulse 6s ease-in-out infinite 1.5s',pointerEvents:'none'}}/>
-      <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(37,99,235,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,0.06) 1px,transparent 1px)',backgroundSize:'40px 40px',animation:'gridShift 25s linear infinite',pointerEvents:'none'}}/>
+      {/* Background */}
+      <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(37,99,235,0.055) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,0.055) 1px,transparent 1px)',backgroundSize:'40px 40px',animation:'gridShift 25s linear infinite',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',width:520,height:520,borderRadius:'50%',background:'#1d4ed8',filter:'blur(130px)',opacity:.16,top:-160,right:400,animation:'orbPulse 8s ease-in-out infinite',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',width:360,height:360,borderRadius:'50%',background:'#7c3aed',filter:'blur(110px)',opacity:.12,bottom:-90,left:-70,animation:'orbPulse 10s ease-in-out infinite 3s',pointerEvents:'none'}}/>
 
-      {/* LEFT PANEL */}
-      <div className="left-panel anim-fadeup" style={{position:'relative',zIndex:10,padding:'48px 44px',display:'flex',flexDirection:'column',justifyContent:'space-between',gap:32}}>
-        <div style={{display:'flex',flexDirection:'column',gap:32}}>
-          {/* Logo */}
-          <div style={{display:'flex',alignItems:'center',gap:14}}>
-            <img src="/senai-logo.png" alt="SENAI" style={{height:48}}/>
-            <div style={{width:1,height:36,background:'rgba(255,255,255,0.12)'}}/>
-            <span style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:400,lineHeight:1.4,maxWidth:110}}>Portal Interno<br/>Bahia · 2026</span>
-          </div>
+      {/* ══════════ LEFT PANEL ══════════ */}
+      <div className="login-left" style={{position:'relative',zIndex:10,padding:'40px 44px',display:'flex',flexDirection:'column',gap:28,animation:'fadeUp 0.7s ease forwards'}}>
 
-          {/* Hero */}
+        {/* Logo + título */}
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <img src="/senai-logo.png" alt="SENAI" style={{height:46}}/>
+          <div style={{width:1,height:34,background:'rgba(255,255,255,0.1)'}}/>
           <div>
-            <div style={{display:'inline-flex',alignItems:'center',gap:7,background:'rgba(37,99,235,0.14)',border:'1px solid rgba(37,99,235,0.28)',borderRadius:20,padding:'5px 13px',marginBottom:18,fontSize:10,fontWeight:700,color:'#60a5fa',textTransform:'uppercase',letterSpacing:'0.8px'}}>
-              <span style={{width:6,height:6,borderRadius:'50%',background:'#22c55e',boxShadow:'0 0 6px #22c55e',display:'inline-block',animation:'blink 2s ease-in-out infinite'}}/>
-              Sistema ativo
-            </div>
-            <h1 style={{fontSize:36,fontWeight:800,color:'#fff',lineHeight:1.12,letterSpacing:'-1.5px',margin:'0 0 14px'}}>
-              Hub de <span style={{color:'#60a5fa'}}>Agentes</span><br/>de Inteligência<br/>Artificial
-            </h1>
-            <p style={{fontSize:13,color:'rgba(255,255,255,0.45)',lineHeight:1.75,maxWidth:400,fontWeight:300,margin:0}}>
-              Plataforma centralizada para acessar, organizar e monitorar os agentes de IA utilizados pelos especialistas do SENAI Bahia.
-            </p>
-          </div>
-
-          {/* Feature cards */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,maxWidth:440}}>
-            {[
-              {icon:'🤖',color:'rgba(37,99,235,0.18)',title:'Agentes IA',desc:'GPT, Claude e outros num só lugar'},
-              {icon:'💬',color:'rgba(124,58,237,0.18)',title:'Chat Inline',desc:'Converse com agentes diretamente'},
-              {icon:'📊',color:'rgba(8,145,178,0.18)',title:'Métricas',desc:'Uso e acessos em tempo real'},
-              {icon:'⚡',color:'rgba(22,163,74,0.18)',title:'Resolução Rápida',desc:'Automação e suporte técnico'},
-            ].map(f=>(
-              <div key={f.title} className="feat-card" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,padding:'14px 15px',display:'flex',gap:10,alignItems:'flex-start',transition:'background 0.2s,border-color 0.2s'}}>
-                <div style={{width:32,height:32,borderRadius:8,background:f.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>{f.icon}</div>
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:'#e2e8f0',marginBottom:3}}>{f.title}</div>
-                  <div style={{fontSize:11,color:'rgba(255,255,255,0.38)',lineHeight:1.45}}>{f.desc}</div>
-                </div>
-              </div>
-            ))}
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.32)',textTransform:'uppercase',letterSpacing:'1px'}}>Portal Interno · Bahia · 2026</div>
+            <div style={{fontSize:15,fontWeight:700,color:'#f1f5f9',letterSpacing:'-0.3px'}}>Hub de Agentes de IA</div>
           </div>
         </div>
 
-        {/* MQCT PUBLIC CARD — ocupa o espaço vazio */}
+        {/* Hero text */}
         <div>
-          <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:10}}>
-            Acesso sem login
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,background:'rgba(37,99,235,0.13)',border:'1px solid rgba(37,99,235,0.27)',borderRadius:20,padding:'5px 13px',marginBottom:14,fontSize:10,fontWeight:700,color:'#60a5fa',textTransform:'uppercase',letterSpacing:'0.8px'}}>
+            <span style={{width:6,height:6,borderRadius:'50%',background:'#22c55e',boxShadow:'0 0 6px #22c55e',display:'inline-block',animation:'blink 2s ease-in-out infinite'}}/>
+            Sistema ativo
           </div>
-          <Link href="/mqct" className="mqct-card" style={{
-            display:'flex',alignItems:'center',gap:16,
-            padding:'18px 22px',borderRadius:16,
-            background:'rgba(37,99,235,0.1)',
-            border:'1px solid rgba(37,99,235,0.3)',
-            boxShadow:'0 8px 24px rgba(37,99,235,0.12)',
-            textDecoration:'none',
+          <h1 style={{fontSize:34,fontWeight:800,color:'#fff',lineHeight:1.12,letterSpacing:'-1.5px',margin:'0 0 12px'}}>
+            Hub de <span style={{color:'#60a5fa'}}>Agentes</span><br/>de Inteligência<br/>Artificial
+          </h1>
+          <p style={{fontSize:13,color:'rgba(255,255,255,0.42)',lineHeight:1.75,maxWidth:400,fontWeight:300,margin:0}}>
+            Plataforma centralizada para acessar, organizar e monitorar os agentes de IA do SENAI Bahia.
+          </p>
+        </div>
+
+        {/* ── CENTRO: Card MQCT + Gráfico lado a lado ── */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,flex:1,alignContent:'center'}}>
+
+          {/* Card MQCT */}
+          <Link href="/mqct" className="mqct-btn" style={{
+            display:'flex',flexDirection:'column',justifyContent:'space-between',
+            padding:'20px 22px',borderRadius:18,
+            background:'rgba(37,99,235,0.1)',border:'1px solid rgba(37,99,235,0.28)',
+            boxShadow:'0 6px 20px rgba(37,99,235,0.1)',textDecoration:'none',minHeight:180,
           }}>
-            <div style={{width:48,height:48,borderRadius:12,background:'linear-gradient(135deg,rgba(37,99,235,0.3),rgba(124,58,237,0.3))',border:'1px solid rgba(37,99,235,0.4)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0,animation:'pulse2 2.5s ease-in-out infinite'}}>
-              🧠
+            <div>
+              <div style={{width:46,height:46,borderRadius:12,background:'linear-gradient(135deg,rgba(37,99,235,0.35),rgba(124,58,237,0.35))',border:'1px solid rgba(37,99,235,0.4)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,marginBottom:12}}>
+                🧠
+              </div>
+              <div style={{fontSize:15,fontWeight:800,color:'#fff',marginBottom:6,letterSpacing:'-0.3px'}}>Agentes IA MQCT</div>
+              <div style={{fontSize:12,color:'rgba(255,255,255,0.42)',lineHeight:1.55}}>
+                Acesse os agentes de IA dos cursos técnicos do SENAI Bahia sem precisar de login.
+              </div>
             </div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:15,fontWeight:800,color:'#fff',marginBottom:4,letterSpacing:'-0.3px'}}>Agentes IA MQCT</div>
-              <div style={{fontSize:12,color:'rgba(255,255,255,0.45)',lineHeight:1.5}}>Acesse os agentes de IA dos cursos técnicos do SENAI Bahia sem precisar de login.</div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:14}}>
+              <span style={{fontSize:11,fontWeight:700,color:'#60a5fa',background:'rgba(37,99,235,0.15)',border:'1px solid rgba(37,99,235,0.25)',borderRadius:20,padding:'3px 10px'}}>Acesso livre</span>
+              <span style={{fontSize:18,color:'#60a5fa'}}>→</span>
             </div>
-            <div style={{fontSize:20,color:'#60a5fa',flexShrink:0}}>→</div>
           </Link>
 
-          <div style={{marginTop:20,fontSize:11,color:'rgba(255,255,255,0.2)',borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:16,lineHeight:1.6}}>
-            Desenvolvido por <span style={{color:'rgba(255,255,255,0.4)',fontWeight:600}}>Paulo da Silva Filho</span><br/>
-            Especialista de TI · SENAI Bahia · GEP · 2026
+          {/* Gráfico de colunas top 5 */}
+          <div style={{padding:'18px 20px',borderRadius:18,background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',display:'flex',flexDirection:'column',minHeight:180}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#f1f5f9',marginBottom:4}}>Top 5 mais usados</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginBottom:14}}>Acessos no mês atual</div>
+
+            {topAgents.length === 0 ? (
+              <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'rgba(255,255,255,0.2)'}}>
+                Sem dados ainda
+              </div>
+            ) : (
+              <div style={{flex:1,display:'flex',flexDirection:'column',gap:7,justifyContent:'center'}}>
+                {topAgents.map((item, i) => (
+                  <div key={item.name} style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{width:7,height:7,borderRadius:'50%',background:COLORS[i],flexShrink:0}}/>
+                    <div style={{flex:1,fontSize:10,color:'rgba(255,255,255,0.55)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
+                    <div style={{width:80,height:6,borderRadius:3,background:'rgba(255,255,255,0.06)',flexShrink:0,overflow:'hidden'}}>
+                      <div style={{height:'100%',borderRadius:3,background:COLORS[i],width:`${(item.total/maxBar)*100}%`,transition:'width 0.8s ease'}}/>
+                    </div>
+                    <div style={{fontSize:10,fontWeight:700,color:COLORS[i],minWidth:18,textAlign:'right',fontFamily:"'JetBrains Mono',monospace"}}>{item.total}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Features em linha */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+          {[
+            {icon:'🤖',title:'Agentes IA'},
+            {icon:'💬',title:'Chat Inline'},
+            {icon:'📊',title:'Métricas'},
+            {icon:'⚡',title:'Automação'},
+          ].map(f=>(
+            <div key={f.title} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:10,padding:'10px 12px',display:'flex',flexDirection:'column',alignItems:'center',gap:5,textAlign:'center'}}>
+              <div style={{fontSize:18}}>{f.icon}</div>
+              <div style={{fontSize:10,fontWeight:600,color:'rgba(255,255,255,0.5)'}}>{f.title}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{fontSize:10,color:'rgba(255,255,255,0.18)',borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:14,lineHeight:1.6}}>
+          Desenvolvido por <span style={{color:'rgba(255,255,255,0.38)',fontWeight:600}}>Paulo da Silva Filho</span> · Especialista de TI · SENAI Bahia · GEP · 2026
         </div>
       </div>
 
-      {/* RIGHT PANEL — Login form */}
-      <div className="anim-slideIn" style={{position:'relative',zIndex:10,background:'rgba(255,255,255,0.025)',backdropFilter:'blur(24px)',WebkitBackdropFilter:'blur(24px)',borderLeft:'1px solid rgba(255,255,255,0.07)',padding:'52px 44px',display:'flex',flexDirection:'column',justifyContent:'center'}}>
+      {/* ══════════ RIGHT PANEL — Login ══════════ */}
+      <div style={{position:'relative',zIndex:10,background:'rgba(255,255,255,0.025)',backdropFilter:'blur(24px)',WebkitBackdropFilter:'blur(24px)',borderLeft:'1px solid rgba(255,255,255,0.07)',padding:'52px 44px',display:'flex',flexDirection:'column',justifyContent:'center',animation:'slideIn 0.5s ease forwards'}}>
         <div style={{marginBottom:32}}>
           <div style={{fontSize:11,fontWeight:700,color:'#60a5fa',textTransform:'uppercase',letterSpacing:'1px',marginBottom:8}}>Acesso restrito</div>
           <h2 style={{fontSize:28,fontWeight:800,color:'#fff',letterSpacing:'-0.5px',lineHeight:1.2,margin:'0 0 8px'}}>Entrar no sistema</h2>
@@ -147,7 +201,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Status terminal */}
         <div style={{marginTop:28}}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
             <div style={{flex:1,height:1,background:'rgba(255,255,255,0.07)'}}/>
