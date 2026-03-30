@@ -98,6 +98,7 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
           messages: newMsgs,
           agentName: agent.name,
           agentDescription: agent.description,
+          agentId: agent.id,
           assistantId: resolvedAssistantId,
           threadId,
         }),
