@@ -12,11 +12,12 @@ function useTopAgents() {
     const supabase = createClient()
     const startOfMonth = new Date()
     startOfMonth.setDate(1); startOfMonth.setHours(0,0,0,0)
-    supabase
-      .from('agent_access_logs')
-      .select('agents(name)')
-      .gte('accessed_at', startOfMonth.toISOString())
-      .then(({ data: logs }) => {
+    async function load() {
+      try {
+        const { data: logs } = await supabase
+          .from('agent_access_logs')
+          .select('agents(name)')
+          .gte('accessed_at', startOfMonth.toISOString())
         if (!logs) return
         const map = new Map<string,number>()
         logs.forEach((log: any) => {
@@ -24,12 +25,13 @@ function useTopAgents() {
           if (name) map.set(name, (map.get(name)||0)+1)
         })
         const sorted = Array.from(map.entries())
-          .map(([name,total]) => ({name: name.replace(/^IA\s*[-–]\s*/,''), total}))
+          .map(([name,total]) => ({name: name.replace(/^IA\s*[-\u2013]\s*/,''), total}))
           .sort((a,b) => b.total - a.total)
           .slice(0,5)
         setData(sorted)
-      })
-      .catch(() => {})
+      } catch { /* sem dados */ }
+    }
+    load()
   }, [])
   return data
 }
