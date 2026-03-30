@@ -9,7 +9,7 @@ export default async function GerenciarAgentesPage() {
 
   const { data: agents, error } = await supabase
     .from('agents')
-    .select(`id, name, provider, platform, external_url, is_active, is_featured,
+    .select(`id, name, provider, platform, external_url, is_active,
       categories(id, name)`)
     .order('name')
 
@@ -89,7 +89,7 @@ export default async function GerenciarAgentesPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
                     <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f1f5f9' }}>{agent.name}</h3>
-                    {agent.is_featured && (
+                    false && (
                       <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)', color: '#fcd34d', borderRadius: 20, padding: '2px 8px' }}>★ Destaque</span>
                     )}
                     <span style={{ fontSize: 10, fontWeight: 600, background: agent.is_active ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${agent.is_active ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, color: agent.is_active ? '#86efac' : '#fca5a5', borderRadius: 20, padding: '2px 8px' }}>
