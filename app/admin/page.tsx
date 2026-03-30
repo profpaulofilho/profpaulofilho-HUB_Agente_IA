@@ -183,7 +183,7 @@ export default async function AdminPage() {
                         <div style={{ width: 54, height: 54, borderRadius: '50%', overflow: 'hidden', background: isAssis ? 'rgba(37,99,235,0.2)' : 'rgba(124,58,237,0.2)', border: `2px solid ${borderClr}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 0 20px ${glow}` }}>
                           {isAssis
                             ? <img src="/assis-icon.png" alt="Assis" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            : <span style={{ fontSize: 26 }}>🤖</span>}
+                            : <img src="/claude-icon.png" alt="Claude" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />}
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0 }}>

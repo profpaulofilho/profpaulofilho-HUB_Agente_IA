@@ -119,7 +119,7 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
 
   const avatarEl = isAssis(agent)
     ? <img src="/assis-icon.png" alt="Assis" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-    : <span style={{ fontSize: 16 }}>🤖</span>
+    : <img src="/claude-icon.png" alt="Claude" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -270,7 +270,7 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
       <div style={{ background: 'rgba(5,8,15,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: 'rgba(37,99,235,0.2)', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {isAssis(agent) ? <img src="/assis-icon.png" alt="Assis" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16 }}>🤖</span>}
+            {isAssis(agent) ? <img src="/assis-icon.png" alt="Assis" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <img src="/claude-icon.png" alt="Claude" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />}
           </div>
           <div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{catName}</div>
