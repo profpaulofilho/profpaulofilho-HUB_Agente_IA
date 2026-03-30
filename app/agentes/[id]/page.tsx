@@ -21,38 +21,28 @@ export default async function AgenteDetailPage({
 
   if (agentError || !agent) redirect('/admin')
 
-  let assistantId: string | null = null
-  const { data: extra } = await supabase
-    .from('agents')
-    .select('assistant_id')
-    .eq('id', id)
-    .single()
-  if (extra?.assistant_id) assistantId = extra.assistant_id
-
-  // Registra acesso — usando await direto com try/catch
+  // Registra acesso
   try {
     await supabase.from('agent_access_logs').insert({
-      agent_id: agent!.id,
-      user_id: user!.id,
+      agent_id: agent.id,
+      user_id: user.id,
       source: 'portal',
     })
-  } catch (_err) {
-    // ignora erro no log
-  }
+  } catch (_e) { /* ignora */ }
 
   return (
     <AgentePage
       agent={{
-        id: String(agent!.id),
-        name: String(agent!.name || ''),
-        description: agent!.description ? String(agent!.description) : null,
-        provider: String(agent!.provider || ''),
-        platform: String(agent!.platform || ''),
-        external_url: String(agent!.external_url || ''),
-        assistant_id: assistantId,
-        categories: agent!.categories ?? null,
+        id: String(agent.id),
+        name: String(agent.name || ''),
+        description: agent.description ? String(agent.description) : null,
+        provider: String(agent.provider || ''),
+        platform: String(agent.platform || ''),
+        external_url: String(agent.external_url || ''),
+        assistant_id: null, // será buscado pelo cliente via /api/agente
+        categories: agent.categories ?? null,
       }}
-      userEmail={String(user!.email || '')}
+      userEmail={String(user.email || '')}
     />
   )
 }

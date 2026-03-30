@@ -20,13 +20,25 @@ export async function POST(request: NextRequest) {
   try { body = await request.json() }
   catch { return NextResponse.json({ error: 'Body inválido' }, { status: 400 }) }
 
-  const { messages, agentName, agentDescription, assistantId, threadId } = body
+  const { messages, agentName, agentDescription, agentId, threadId } = body
+
   if (!messages || !Array.isArray(messages))
     return NextResponse.json({ error: 'Mensagens inválidas' }, { status: 400 })
 
   const openaiKey = process.env.OPENAI_API_KEY
   if (!openaiKey)
     return NextResponse.json({ error: 'OPENAI_API_KEY não configurada.' }, { status: 500 })
+
+  // Busca assistant_id SEMPRE direto do Supabase — ignora o que veio do cliente
+  let assistantId: string | null = null
+  if (agentId) {
+    const { data: agentData } = await supabase
+      .from('agents')
+      .select('assistant_id')
+      .eq('id', agentId)
+      .single()
+    assistantId = agentData?.assistant_id || null
+  }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -41,9 +53,7 @@ export async function POST(request: NextRequest) {
       let currentThreadId = threadId
       if (!currentThreadId) {
         const threadRes = await fetch('https://api.openai.com/v1/threads', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({}),
+          method: 'POST', headers, body: JSON.stringify({}),
         })
         const threadData = await threadRes.json()
         if (!threadRes.ok) {
@@ -59,8 +69,7 @@ export async function POST(request: NextRequest) {
       if (!lastUserMsg) return NextResponse.json({ error: 'Sem mensagem do usuário' }, { status: 400 })
 
       const msgRes = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
-        method: 'POST',
-        headers,
+        method: 'POST', headers,
         body: JSON.stringify({ role: 'user', content: lastUserMsg.content }),
       })
       if (!msgRes.ok) {
@@ -70,10 +79,9 @@ export async function POST(request: NextRequest) {
         }, { status: 502 })
       }
 
-      // 3. Cria run (sem passar model — o Assistant já tem o modelo configurado)
+      // 3. Cria run
       const runRes = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs`, {
-        method: 'POST',
-        headers,
+        method: 'POST', headers,
         body: JSON.stringify({ assistant_id: assistantId }),
       })
       const runData = await runRes.json()
@@ -82,7 +90,6 @@ export async function POST(request: NextRequest) {
           error: `Erro ao criar run: ${runData?.error?.message || runRes.status}`
         }, { status: 502 })
       }
-      const runId = runData.id
 
       // 4. Polling até completar (max 60s)
       let status = runData.status
@@ -90,7 +97,7 @@ export async function POST(request: NextRequest) {
       while (!['completed', 'failed', 'cancelled', 'expired'].includes(status) && attempts < 60) {
         await new Promise(r => setTimeout(r, 1000))
         const pollRes = await fetch(
-          `https://api.openai.com/v1/threads/${currentThreadId}/runs/${runId}`,
+          `https://api.openai.com/v1/threads/${currentThreadId}/runs/${runData.id}`,
           { headers }
         )
         const pollData = await pollRes.json()
@@ -100,27 +107,24 @@ export async function POST(request: NextRequest) {
 
       if (status !== 'completed') {
         return NextResponse.json({
-          error: `Processamento encerrou com status: ${status}. Tente novamente.`
+          error: `Run finalizado com status: ${status}`
         }, { status: 502 })
       }
 
-      // 5. Busca última mensagem do assistente
+      // 5. Busca última mensagem
       const msgsRes = await fetch(
         `https://api.openai.com/v1/threads/${currentThreadId}/messages?order=desc&limit=1`,
         { headers }
       )
       const msgsData = await msgsRes.json()
-      const lastMsg = msgsData.data?.[0]
-      const rawContent = lastMsg?.content?.[0]?.text?.value || 'Sem resposta.'
-
-      // Remove anotações de citação de arquivo 【N:N†fonte】
+      const rawContent = msgsData.data?.[0]?.content?.[0]?.text?.value || 'Sem resposta.'
       const content = rawContent.replace(/【\d+:\d+†[^】]*】/g, '').trim()
 
       return NextResponse.json({ content, threadId: currentThreadId })
 
     } catch (e: any) {
       return NextResponse.json({
-        error: 'Erro interno Assistants API: ' + (e?.message || 'desconhecido')
+        error: 'Erro Assistants API: ' + (e?.message || 'desconhecido')
       }, { status: 500 })
     }
   }
@@ -149,6 +153,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ content: data.choices?.[0]?.message?.content || 'Sem resposta.' })
   } catch (e: any) {
-    return NextResponse.json({ error: 'Erro interno: ' + (e?.message || 'desconhecido') }, { status: 500 })
+    return NextResponse.json({ error: 'Erro: ' + (e?.message || 'desconhecido') }, { status: 500 })
   }
 }
