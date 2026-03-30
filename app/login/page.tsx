@@ -40,7 +40,6 @@ export default function LoginPage() {
     }}>
       {/* Animated bg grid */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
         @keyframes gridShift { 0%{background-position:0 0} 100%{background-position:40px 40px} }
         @keyframes orbPulse { 0%,100%{opacity:.2;transform:scale(1)} 50%{opacity:.35;transform:scale(1.08)} }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
