@@ -249,13 +249,16 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
 
   useEffect(() => {
     if (!gpt) return
-    fetch(`/api/agente?id=${agent.id}`, { cache: 'no-store' })
-      .then(r => r.json())
-      .then(data => {
+    async function fetchAssistant() {
+      try {
+        const r = await fetch(`/api/agente?id=${agent.id}`, { cache: 'no-store' })
+        const data = await r.json()
         setResolvedAssistantId(data.assistant_id || null)
+      } catch { /* ignora */ } finally {
         setLoadingAssistant(false)
-      })
-      .catch(() => setLoadingAssistant(false))
+      }
+    }
+    fetchAssistant()
   }, [agent.id, gpt])
 
   return (
