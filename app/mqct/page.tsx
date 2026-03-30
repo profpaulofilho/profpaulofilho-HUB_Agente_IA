@@ -19,6 +19,16 @@ function getCat(c: any): string {
   return c.name || ''
 }
 
+// Extrai cursos do nome do agente (separados por , · & e / ou vírgula)
+function extractCourses(name: string): string[] {
+  // Remove prefixo "IA - " ou "IA – "
+  const clean = name.replace(/^IA\s*[-–]\s*/i, '').trim()
+  // Divide por separadores comuns
+  const parts = clean.split(/[,·&]|\be\b|\//).map((s: string) => s.trim()).filter(Boolean)
+  if (parts.length <= 1) return []
+  return parts
+}
+
 export default async function MQCTPage() {
   const supabase = await createClient()
 
@@ -54,6 +64,8 @@ export default async function MQCTPage() {
         .open-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
         .open-btn{transition:all 0.15s;}
         .login-link:hover{background:rgba(255,255,255,0.08)!important;}
+        .courses-tooltip{opacity:0;transition:opacity 0.18s,transform 0.18s;transform:translateX(-50%) translateY(4px);}
+        .avatar-wrap:hover .courses-tooltip{opacity:1;transform:translateX(-50%) translateY(0);}
       `}</style>
 
       {/* Background */}
@@ -120,9 +132,37 @@ export default async function MQCTPage() {
                     borderRadius:18,padding:'20px',
                     display:'flex',gap:16,alignItems:'flex-start',
                   }}>
-                    {/* Avatar */}
-                    <div style={{width:52,height:52,borderRadius:14,background:gpt?'rgba(37,99,235,0.18)':'rgba(124,58,237,0.18)',border:`1px solid ${gpt?'rgba(37,99,235,0.3)':'rgba(124,58,237,0.3)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0,boxShadow:`0 4px 14px ${gpt?'rgba(37,99,235,0.2)':'rgba(124,58,237,0.2)'}`}}>
-                      🤖
+                    {/* Avatar + Tooltip */}
+                    <div style={{position:'relative',flexShrink:0}} className="avatar-wrap">
+                      <div style={{width:52,height:52,borderRadius:14,background:gpt?'rgba(37,99,235,0.18)':'rgba(124,58,237,0.18)',border:`1px solid ${gpt?'rgba(37,99,235,0.3)':'rgba(124,58,237,0.3)'}`,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',boxShadow:`0 4px 14px ${gpt?'rgba(37,99,235,0.2)':'rgba(124,58,237,0.2)'}`}}>
+                        {gpt
+                          ? <img src="/gpt-icon.png" alt="GPT" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:14}}/>
+                          : <span style={{fontSize:24}}>🤖</span>
+                        }
+                      </div>
+                      {/* Tooltip com cursos */}
+                      {extractCourses(agent.name).length > 0 && (
+                        <div className="courses-tooltip" style={{
+                          position:'absolute',bottom:'calc(100% + 8px)',left:'50%',
+                          transform:'translateX(-50%)',
+                          background:'rgba(10,12,22,0.97)',
+                          border:'1px solid rgba(99,102,241,0.3)',
+                          borderRadius:12,padding:'10px 13px',
+                          minWidth:180,maxWidth:240,
+                          pointerEvents:'none',zIndex:50,
+                          boxShadow:'0 8px 24px rgba(0,0,0,0.5)',
+                        }}>
+                          <div style={{fontSize:9,fontWeight:700,color:'#818cf8',textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:7}}>Cursos atendidos</div>
+                          {extractCourses(agent.name).map((curso: string, ci: number) => (
+                            <div key={ci} style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                              <div style={{width:4,height:4,borderRadius:'50%',background:'#60a5fa',flexShrink:0}}/>
+                              <span style={{fontSize:11,color:'rgba(255,255,255,0.7)',lineHeight:1.4}}>{curso}</span>
+                            </div>
+                          ))}
+                          {/* Arrow */}
+                          <div style={{position:'absolute',bottom:-5,left:'50%',transform:'translateX(-50%)',width:8,height:8,background:'rgba(10,12,22,0.97)',border:'1px solid rgba(99,102,241,0.3)',borderTop:'none',borderLeft:'none',rotate:'45deg'}}/>
+                        </div>
+                      )}
                     </div>
 
                     {/* Info */}
