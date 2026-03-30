@@ -29,30 +29,30 @@ export default async function AgenteDetailPage({
     .single()
   if (extra?.assistant_id) assistantId = extra.assistant_id
 
-  // Registra acesso sem bloquear a renderização
-  void (async () => {
-    try {
-      await supabase.from('agent_access_logs').insert({
-        agent_id: agent.id,
-        user_id: user.id,
-        source: 'portal',
-      })
-    } catch { /* ignora */ }
-  })()
+  // Registra acesso — usando await direto com try/catch
+  try {
+    await supabase.from('agent_access_logs').insert({
+      agent_id: agent!.id,
+      user_id: user!.id,
+      source: 'portal',
+    })
+  } catch (_err) {
+    // ignora erro no log
+  }
 
   return (
     <AgentePage
       agent={{
-        id: String(agent.id),
-        name: String(agent.name || ''),
-        description: agent.description ? String(agent.description) : null,
-        provider: String(agent.provider || ''),
-        platform: String(agent.platform || ''),
-        external_url: String(agent.external_url || ''),
+        id: String(agent!.id),
+        name: String(agent!.name || ''),
+        description: agent!.description ? String(agent!.description) : null,
+        provider: String(agent!.provider || ''),
+        platform: String(agent!.platform || ''),
+        external_url: String(agent!.external_url || ''),
         assistant_id: assistantId,
-        categories: agent.categories ?? null,
+        categories: agent!.categories ?? null,
       }}
-      userEmail={String(user.email || '')}
+      userEmail={String(user!.email || '')}
     />
   )
 }
