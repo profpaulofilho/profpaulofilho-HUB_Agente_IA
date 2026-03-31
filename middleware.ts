@@ -4,8 +4,9 @@ import { createServerClient } from '@supabase/ssr'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Rotas que nunca precisam de auth
+  // NUNCA interceptar estas rotas — deixa passar sempre
   if (
+    pathname === '/login' ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/logout') ||
     pathname === '/mqct' ||
@@ -35,25 +36,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Verificar autenticação lendo o cookie local (sem chamada de rede)
-  // Tokens Supabase duram 1h — getSession() é suficiente para o middleware
-  const { data: { session } } = await supabase.auth.getSession()
-  const isLoggedIn = !!session
+  let isLoggedIn = false
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    isLoggedIn = !!session
+  } catch {
+    isLoggedIn = false
+  }
 
-  // Rota raiz — redireciona conforme estado
+  // Rota raiz
   if (pathname === '/') {
     return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
   }
 
-  // Logado tentando acessar /login — manda para /admin
-  if (isLoggedIn && pathname === '/login') {
-    return NextResponse.redirect(new URL('/admin', request.url))
-  }
-
-  // Não logado em qualquer rota protegida
-  if (!isLoggedIn && pathname !== '/login') {
-    const loginUrl = new URL('/login', request.url)
-    return NextResponse.redirect(loginUrl)
+  // Não logado em rota protegida — manda para login
+  if (!isLoggedIn) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return response
