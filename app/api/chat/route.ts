@@ -25,20 +25,75 @@ export async function POST(request: NextRequest) {
   if (!messages || !Array.isArray(messages))
     return NextResponse.json({ error: 'Mensagens inválidas' }, { status: 400 })
 
-  const openaiKey = process.env.OPENAI_API_KEY
-  if (!openaiKey)
-    return NextResponse.json({ error: 'OPENAI_API_KEY não configurada.' }, { status: 500 })
-
-  // Busca assistant_id SEMPRE direto do Supabase — ignora o que veio do cliente
+  // Busca dados SEMPRE do Supabase
   let assistantId: string | null = null
+  let agentProvider: string = ''
+  let agentPlatform: string = ''
+  let geminiApiKey: string | null = null
+
   if (agentId) {
     const { data: agentData } = await supabase
       .from('agents')
-      .select('assistant_id')
+      .select('assistant_id, provider, platform, gemini_api_key')
       .eq('id', agentId)
       .single()
     assistantId = agentData?.assistant_id || null
+    agentProvider = (agentData?.provider || '').toLowerCase()
+    agentPlatform = (agentData?.platform || '').toLowerCase()
+    geminiApiKey = agentData?.gemini_api_key || null
   }
+
+  const isGemini = agentProvider.includes('google') || agentPlatform.includes('gemini')
+
+  // ── GEMINI (Google AI Studio) ────────────────────────────────────
+  if (isGemini) {
+    const apiKey = geminiApiKey || process.env.GOOGLE_GEMINI_API_KEY
+    if (!apiKey)
+      return NextResponse.json({ error: 'GOOGLE_GEMINI_API_KEY não configurada.' }, { status: 500 })
+
+    const systemPrompt = agentDescription
+      ? `Você é ${agentName}. ${agentDescription} Responda sempre em português do Brasil.`
+      : `Você é ${agentName}, um assistente especializado do SENAI Bahia. Responda sempre em português do Brasil.`
+
+    // Converte histórico para formato Gemini
+    const geminiContents = messages.map((m: any) => ({
+      role: m.role === 'user' ? 'user' : 'model',
+      parts: [{ text: m.content }],
+    }))
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: geminiContents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2048,
+            },
+          }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) {
+        return NextResponse.json({
+          error: `Erro Gemini: ${data?.error?.message || res.status}`
+        }, { status: 502 })
+      }
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.'
+      return NextResponse.json({ content })
+    } catch (e: any) {
+      return NextResponse.json({ error: 'Erro Gemini: ' + (e?.message || 'desconhecido') }, { status: 500 })
+    }
+  }
+
+  // ── OPENAI ───────────────────────────────────────────────────────
+  const openaiKey = process.env.OPENAI_API_KEY
+  if (!openaiKey)
+    return NextResponse.json({ error: 'OPENAI_API_KEY não configurada.' }, { status: 500 })
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -49,22 +104,17 @@ export async function POST(request: NextRequest) {
   // ── ASSISTANTS API ──────────────────────────────────────────────
   if (assistantId) {
     try {
-      // 1. Cria ou reutiliza thread
       let currentThreadId = threadId
       if (!currentThreadId) {
         const threadRes = await fetch('https://api.openai.com/v1/threads', {
           method: 'POST', headers, body: JSON.stringify({}),
         })
         const threadData = await threadRes.json()
-        if (!threadRes.ok) {
-          return NextResponse.json({
-            error: `Erro ao criar thread: ${threadData?.error?.message || threadRes.status}`
-          }, { status: 502 })
-        }
+        if (!threadRes.ok)
+          return NextResponse.json({ error: `Erro ao criar thread: ${threadData?.error?.message || threadRes.status}` }, { status: 502 })
         currentThreadId = threadData.id
       }
 
-      // 2. Adiciona mensagem do usuário
       const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')
       if (!lastUserMsg) return NextResponse.json({ error: 'Sem mensagem do usuário' }, { status: 400 })
 
@@ -74,24 +124,17 @@ export async function POST(request: NextRequest) {
       })
       if (!msgRes.ok) {
         const msgErr = await msgRes.json()
-        return NextResponse.json({
-          error: `Erro ao adicionar mensagem: ${msgErr?.error?.message || msgRes.status}`
-        }, { status: 502 })
+        return NextResponse.json({ error: `Erro ao adicionar mensagem: ${msgErr?.error?.message || msgRes.status}` }, { status: 502 })
       }
 
-      // 3. Cria run
       const runRes = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs`, {
         method: 'POST', headers,
         body: JSON.stringify({ assistant_id: assistantId }),
       })
       const runData = await runRes.json()
-      if (!runRes.ok) {
-        return NextResponse.json({
-          error: `Erro ao criar run: ${runData?.error?.message || runRes.status}`
-        }, { status: 502 })
-      }
+      if (!runRes.ok)
+        return NextResponse.json({ error: `Erro ao criar run: ${runData?.error?.message || runRes.status}` }, { status: 502 })
 
-      // 4. Polling até completar (max 60s)
       let status = runData.status
       let attempts = 0
       while (!['completed', 'failed', 'cancelled', 'expired'].includes(status) && attempts < 60) {
@@ -105,13 +148,9 @@ export async function POST(request: NextRequest) {
         attempts++
       }
 
-      if (status !== 'completed') {
-        return NextResponse.json({
-          error: `Run finalizado com status: ${status}`
-        }, { status: 502 })
-      }
+      if (status !== 'completed')
+        return NextResponse.json({ error: `Run finalizado com status: ${status}` }, { status: 502 })
 
-      // 5. Busca última mensagem
       const msgsRes = await fetch(
         `https://api.openai.com/v1/threads/${currentThreadId}/messages?order=desc&limit=1`,
         { headers }
@@ -123,9 +162,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ content, threadId: currentThreadId })
 
     } catch (e: any) {
-      return NextResponse.json({
-        error: 'Erro Assistants API: ' + (e?.message || 'desconhecido')
-      }, { status: 500 })
+      return NextResponse.json({ error: 'Erro Assistants API: ' + (e?.message || 'desconhecido') }, { status: 500 })
     }
   }
 
@@ -146,11 +183,8 @@ export async function POST(request: NextRequest) {
       }),
     })
     const data = await res.json()
-    if (!res.ok) {
-      return NextResponse.json({
-        error: data?.error?.message || `Erro OpenAI: HTTP ${res.status}`
-      }, { status: 502 })
-    }
+    if (!res.ok)
+      return NextResponse.json({ error: data?.error?.message || `Erro OpenAI: HTTP ${res.status}` }, { status: 502 })
     return NextResponse.json({ content: data.choices?.[0]?.message?.content || 'Sem resposta.' })
   } catch (e: any) {
     return NextResponse.json({ error: 'Erro: ' + (e?.message || 'desconhecido') }, { status: 500 })
