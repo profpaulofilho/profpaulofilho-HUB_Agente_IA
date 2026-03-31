@@ -7,14 +7,26 @@ export default async function GerenciarAgentesPage() {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) redirect('/login')
 
-  const { data: agents, error } = await supabase
-    .from('agents')
-    .select(`id, name, provider, platform, external_url, is_active,
-      categories(id, name)`)
-    .order('name')
+  let agents: any[] = []
+  let categories: any[] = []
+  let error: any = null
 
-  const { data: categories } = await supabase
-    .from('categories').select('*').order('sort_order')
+  try {
+    const { data: a, error: e } = await supabase
+      .from('agents')
+      .select('id, name, provider, platform, external_url, is_active, categories(id, name)')
+      .order('name')
+    agents = a || []
+    error = e
+  } catch (e: any) {
+    error = e
+  }
+
+  try {
+    const { data: c } = await supabase
+      .from('categories').select('*').order('sort_order')
+    categories = c || []
+  } catch { /* ignora */ }
 
   const inp: React.CSSProperties = {
     background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
@@ -65,7 +77,7 @@ export default async function GerenciarAgentesPage() {
             Gerenciar agentes
           </h1>
           <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>
-            {agents?.length || 0} agente(s) cadastrado(s) · {categories?.length || 0} categoria(s)
+            {agents.length} agente(s) cadastrado(s) · {categories?.length || 0} categoria(s)
           </p>
         </div>
 
@@ -77,7 +89,7 @@ export default async function GerenciarAgentesPage() {
 
         {/* AGENT LIST */}
         <div style={{ display: 'grid', gap: 10 }}>
-          {(agents || []).map((agent: any) => {
+          {agents.map((agent: any) => {
             const cat = Array.isArray(agent.categories) ? agent.categories[0] : agent.categories
             return (
               <div key={agent.id} className="agent-row" style={{

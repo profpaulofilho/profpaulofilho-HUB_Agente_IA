@@ -14,12 +14,12 @@ async function createAgent(formData: FormData) {
   const platform = String(formData.get('platform') || '').trim()
   const external_url = String(formData.get('external_url') || '').trim()
   const category_id = String(formData.get('category_id') || '').trim()
-  const is_featured = formData.get('is_featured') === 'on'
+  // is_featured removido — coluna não existe na tabela
 
   const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
   if (!name || !provider || !platform || !external_url || !category_id) redirect('/admin/agentes/novo')
 
-  await supabase.from('agents').insert({ name, slug, description, provider, platform, external_url, category_id, is_active: true, is_featured, created_by: user.id })
+  await supabase.from('agents').insert({ name, slug, description, provider, platform, external_url, category_id, is_active: true,  created_by: user.id })
   redirect('/admin')
 }
 

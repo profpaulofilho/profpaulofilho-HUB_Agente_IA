@@ -4,11 +4,13 @@ import { createServerClient } from '@supabase/ssr'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith('/api/') || pathname.startsWith('/logout')) {
-    return NextResponse.next()
-  }
-
-  if (pathname === '/mqct' || pathname.startsWith('/mqct/')) {
+  // Rotas que nunca precisam de auth
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/logout') ||
+    pathname === '/mqct' ||
+    pathname.startsWith('/mqct/')
+  ) {
     return NextResponse.next()
   }
 
@@ -33,27 +35,25 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // getSession lê o cookie localmente — rápido, sem depender de rede
-  // Se o access_token ainda for válido, isLoggedIn = true
-  // Tokens duram 1h por padrão no Supabase
-  let isLoggedIn = false
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    isLoggedIn = !!session?.access_token
-  } catch {
-    isLoggedIn = false
-  }
+  // Verificar autenticação lendo o cookie local (sem chamada de rede)
+  // Tokens Supabase duram 1h — getSession() é suficiente para o middleware
+  const { data: { session } } = await supabase.auth.getSession()
+  const isLoggedIn = !!session
 
+  // Rota raiz — redireciona conforme estado
   if (pathname === '/') {
     return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
   }
 
+  // Logado tentando acessar /login — manda para /admin
   if (isLoggedIn && pathname === '/login') {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
+  // Não logado em qualquer rota protegida
   if (!isLoggedIn && pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const loginUrl = new URL('/login', request.url)
+    return NextResponse.redirect(loginUrl)
   }
 
   return response
@@ -61,6 +61,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|logout|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
