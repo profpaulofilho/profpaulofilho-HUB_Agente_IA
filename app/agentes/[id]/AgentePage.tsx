@@ -12,6 +12,7 @@ type Agent = {
   platform: string
   external_url: string
   assistant_id?: string | null
+  icon_url?: string | null
   categories: any
 }
 
@@ -23,11 +24,29 @@ function getCat(c: any): string {
 function isGPT(a: Agent) {
   return (a.platform || '').toLowerCase().includes('gpt') || (a.provider || '').toLowerCase().includes('openai')
 }
+function isGemini(a: Agent) {
+  return (a.provider || '').toLowerCase().includes('google') || (a.platform || '').toLowerCase().includes('gemini')
+}
 function isClaude(a: Agent) {
   return (a.platform || '').toLowerCase().includes('claude') || (a.provider || '').toLowerCase().includes('anthropic')
 }
 function isAssis(a: Agent) {
   return (a.name || '').toLowerCase().includes('assis')
+}
+
+function getAvatarSrc(agent: Agent): string {
+  if (agent.icon_url) return agent.icon_url
+  if (isAssis(agent)) return '/assis-icon.png'
+  if (isGemini(agent)) return '/gemini-icon.svg'
+  if (isClaude(agent)) return '/claude-icon.png'
+  if (isGPT(agent)) return '/gpt-icon.png'
+  return '/gpt-icon.png'
+}
+
+function getProviderColor(agent: Agent) {
+  if (isGemini(agent)) return { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.25)', color: '#fde047', glow: 'rgba(234,179,8,0.15)' }
+  if (isClaude(agent)) return { bg: 'rgba(168,85,247,0.1)', border: 'rgba(168,85,247,0.25)', color: '#d8b4fe', glow: 'rgba(168,85,247,0.15)' }
+  return { bg: 'rgba(37,99,235,0.1)', border: 'rgba(37,99,235,0.25)', color: '#93c5fd', glow: 'rgba(37,99,235,0.15)' }
 }
 
 function Markdown({ text }: { text: string }) {
@@ -75,6 +94,8 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
   const [threadId, setThreadId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const colors = getProviderColor(agent)
+  const avatarSrc = getAvatarSrc(agent)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -118,16 +139,16 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  const avatarEl = isAssis(agent)
-    ? <img src="/assis-icon.png" alt="Assis" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-    : <img src="/claude-icon.png" alt="Claude" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+  const avatarEl = (
+    <img src={avatarSrc} alt={agent.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {messages.length === 0 && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 40 }}>
-            <div style={{ width: 68, height: 68, borderRadius: '50%', overflow: 'hidden', background: 'rgba(37,99,235,0.15)', border: '2px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, boxShadow: '0 0 24px rgba(37,99,235,0.2)' }}>
+            <div style={{ width: 68, height: 68, borderRadius: '50%', overflow: 'hidden', background: colors.bg, border: `2px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, boxShadow: `0 0 24px ${colors.glow}` }}>
               {avatarEl}
             </div>
             <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>{agent.name}</p>
@@ -147,7 +168,7 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
         {messages.map((m, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end' }}>
             {m.role === 'assistant' && (
-              <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: 'rgba(37,99,235,0.2)', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: colors.bg, border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {avatarEl}
               </div>
             )}
@@ -168,7 +189,7 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
 
         {loading && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: 'rgba(37,99,235,0.2)', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', overflow: 'hidden', background: colors.bg, border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {avatarEl}
             </div>
             <div style={{ padding: '12px 16px', borderRadius: '4px 18px 18px 18px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -214,7 +235,7 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
               t.style.height = 'auto'
               t.style.height = Math.min(t.scrollHeight, 130) + 'px'
             }}
-            onFocus={e => { e.target.style.borderColor = 'rgba(37,99,235,0.5)' }}
+            onFocus={e => { e.target.style.borderColor = colors.border }}
             onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
           />
           <button
@@ -231,7 +252,7 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
           >↑</button>
         </div>
         <p style={{ margin: '5px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.18)', textAlign: 'center' }}>
-          {resolvedAssistantId ? '🔍 Pesquisando na base de conhecimento do SENAI Bahia' : 'Enter para enviar · Shift+Enter para nova linha'}
+          {isGemini(agent) ? '✨ Powered by Google Gemini' : resolvedAssistantId ? '🔍 Pesquisando na base de conhecimento do SENAI Bahia' : 'Enter para enviar · Shift+Enter para nova linha'}
         </p>
       </div>
     </div>
@@ -240,26 +261,31 @@ function ChatWindow({ agent, resolvedAssistantId }: { agent: Agent; resolvedAssi
 
 export default function AgentePage({ agent, userEmail }: { agent: Agent; userEmail: string }) {
   const gpt = isGPT(agent)
+  const gemini = isGemini(agent)
   const claude = isClaude(agent)
   const catName = getCat(agent.categories)
+  const colors = getProviderColor(agent)
+  const avatarSrc = getAvatarSrc(agent)
 
-  // Busca assistant_id FRESCO do banco via API — sem cache do Next.js
+  // Chat funciona para GPT e Gemini
+  const needsChat = gpt || gemini
+
   const [resolvedAssistantId, setResolvedAssistantId] = useState<string | null>(null)
-  const [loadingAssistant, setLoadingAssistant] = useState(gpt)
+  const [loadingAgent, setLoadingAgent] = useState(needsChat)
 
   useEffect(() => {
-    if (!gpt) return
+    if (!needsChat) return
     async function fetchAssistant() {
       try {
         const r = await fetch(`/api/agente?id=${agent.id}`, { cache: 'no-store' })
         const data = await r.json()
         setResolvedAssistantId(data.assistant_id || null)
       } catch { /* ignora */ } finally {
-        setLoadingAssistant(false)
+        setLoadingAgent(false)
       }
     }
     fetchAssistant()
-  }, [agent.id, gpt])
+  }, [agent.id, needsChat])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#05080f', overflow: 'hidden' }}>
@@ -273,8 +299,8 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
       {/* TOPBAR */}
       <div style={{ background: 'rgba(5,8,15,0.95)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: 'rgba(37,99,235,0.2)', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {isAssis(agent) ? <img src="/assis-icon.png" alt="Assis" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <img src="/claude-icon.png" alt="Claude" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />}
+          <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: colors.bg, border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <img src={avatarSrc} alt={agent.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
           </div>
           <div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{catName}</div>
@@ -288,10 +314,12 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: gpt ? 'rgba(34,197,94,0.1)' : 'rgba(168,85,247,0.1)', color: gpt ? '#86efac' : '#d8b4fe', border: `1px solid ${gpt ? 'rgba(34,197,94,0.2)' : 'rgba(168,85,247,0.2)'}` }}>
+          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: colors.bg, color: colors.color, border: `1px solid ${colors.border}` }}>
             {agent.provider} · {agent.platform}
           </span>
-          <a href={agent.external_url} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>↗ Externo</a>
+          {agent.external_url && (
+            <a href={agent.external_url} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>↗ Externo</a>
+          )}
           <Link href="/admin" style={{ padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>← Voltar</Link>
         </div>
       </div>
@@ -303,8 +331,8 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
       )}
 
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {gpt && !loadingAssistant && <ChatWindow agent={agent} resolvedAssistantId={resolvedAssistantId} />}
-        {gpt && loadingAssistant && (
+        {needsChat && !loadingAgent && <ChatWindow agent={agent} resolvedAssistantId={resolvedAssistantId} />}
+        {needsChat && loadingAgent && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>Carregando agente...</div>
           </div>
@@ -319,7 +347,7 @@ export default function AgentePage({ agent, userEmail }: { agent: Agent; userEma
             </div>
           </div>
         )}
-        {!gpt && !claude && (
+        {!needsChat && !claude && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
             <div style={{ maxWidth: 400, textAlign: 'center' }}>
               <div style={{ width: 70, height: 70, borderRadius: 20, background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, margin: '0 auto 18px' }}>🔗</div>
