@@ -38,8 +38,8 @@ export async function middleware(request: NextRequest) {
 
   let isLoggedIn = false
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    isLoggedIn = !!session
+    const { data: { user } } = await supabase.auth.getUser()
+    isLoggedIn = !!user
   } catch {
     isLoggedIn = false
   }
