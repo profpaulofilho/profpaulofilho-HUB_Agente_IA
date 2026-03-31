@@ -15,23 +15,44 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Verifica qualquer cookie do Supabase — rápido, sem chamar API
-  const allCookies = request.cookies.getAll()
-  const hasSupabaseCookie = allCookies.some(c => c.name.includes('auth-token') || c.name.startsWith('sb-'))
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  })
 
-  // Se não tem cookie nenhum do Supabase, manda pro login direto
-  if (!hasSupabaseCookie) {
-    if (pathname === '/') return NextResponse.redirect(new URL('/login', request.url))
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll() },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value)
+            response = NextResponse.next({ request: { headers: request.headers } })
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
+
+  let isLoggedIn = false
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    isLoggedIn = !!user
+  } catch {
+    isLoggedIn = false
+  }
+
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
+  }
+
+  if (!isLoggedIn) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Tem cookie — deixa passar sem chamar o Supabase
-  // A validação real acontece nas pages (server components) que usam getUser()
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/admin', request.url))
-  }
-
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
