@@ -1,60 +1,38 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // NUNCA interceptar estas rotas — deixa passar sempre
+  // Rotas públicas — deixa passar sempre
   if (
     pathname === '/login' ||
+    pathname === '/mqct' ||
+    pathname.startsWith('/mqct/') ||
     pathname.startsWith('/api/') ||
     pathname.startsWith('/logout') ||
-    pathname === '/mqct' ||
-    pathname.startsWith('/mqct/')
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/public/')
   ) {
     return NextResponse.next()
   }
 
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            response = NextResponse.next({ request: { headers: request.headers } })
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    }
+  // Verifica cookie de sessão do Supabase
+  const cookies = request.cookies
+  const hasSession = cookies.getAll().some(c =>
+    c.name.startsWith('sb-') && c.name.endsWith('-auth-token')
   )
-
-  let isLoggedIn = false
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    isLoggedIn = !!user
-  } catch {
-    isLoggedIn = false
-  }
 
   // Rota raiz
   if (pathname === '/') {
-    return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
+    return NextResponse.redirect(new URL(hasSession ? '/admin' : '/login', request.url))
   }
 
-  // Não logado em rota protegida — manda para login
-  if (!isLoggedIn) {
+  // Não autenticado — manda para login
+  if (!hasSession) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return response
+  return NextResponse.next()
 }
 
 export const config = {

@@ -206,7 +206,7 @@ export default async function AdminPage() {
 
                       {/* Botão */}
                       {isAssis ? (
-                        <Link href={`/agentes/${agent.id}`} className="open-btn" style={{ padding: '10px 18px', borderRadius: 12, flexShrink: 0, background: btnBg, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: btnShadow, transition: 'transform 0.15s, opacity 0.2s', whiteSpace: 'nowrap' }}>
+                        <Link href={`/agentes/${agent.id}`} target="_blank" rel="noopener noreferrer" className="open-btn" style={{ padding: '10px 18px', borderRadius: 12, flexShrink: 0, background: btnBg, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: btnShadow, transition: 'transform 0.15s, opacity 0.2s', whiteSpace: 'nowrap' }}>
                           💬 Conversar
                         </Link>
                       ) : (

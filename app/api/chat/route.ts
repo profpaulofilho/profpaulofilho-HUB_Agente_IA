@@ -25,37 +25,34 @@ export async function POST(request: NextRequest) {
   if (!messages || !Array.isArray(messages))
     return NextResponse.json({ error: 'Mensagens inválidas' }, { status: 400 })
 
-  // Busca dados SEMPRE do Supabase
+  // Busca dados do agente no Supabase
   let assistantId: string | null = null
   let agentProvider: string = ''
   let agentPlatform: string = ''
-  let geminiApiKey: string | null = null
 
   if (agentId) {
     const { data: agentData } = await supabase
       .from('agents')
-      .select('assistant_id, provider, platform, gemini_api_key')
+      .select('assistant_id, provider, platform')
       .eq('id', agentId)
       .single()
     assistantId = agentData?.assistant_id || null
     agentProvider = (agentData?.provider || '').toLowerCase()
     agentPlatform = (agentData?.platform || '').toLowerCase()
-    geminiApiKey = agentData?.gemini_api_key || null
   }
 
   const isGemini = agentProvider.includes('google') || agentPlatform.includes('gemini')
 
-  // ── GEMINI (Google AI Studio) ────────────────────────────────────
+  // ── GEMINI ───────────────────────────────────────────────────────
   if (isGemini) {
-    const apiKey = geminiApiKey || process.env.GOOGLE_GEMINI_API_KEY
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY
     if (!apiKey)
       return NextResponse.json({ error: 'GOOGLE_GEMINI_API_KEY não configurada.' }, { status: 500 })
 
     const systemPrompt = agentDescription
       ? `Você é ${agentName}. ${agentDescription} Responda sempre em português do Brasil.`
-      : `Você é ${agentName}, um assistente especializado do SENAI Bahia. Responda sempre em português do Brasil.`
+      : `Você é ${agentName}, assistente especializado do SENAI Bahia. Responda sempre em português do Brasil.`
 
-    // Converte histórico para formato Gemini
     const geminiContents = messages.map((m: any) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
@@ -70,19 +67,13 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             system_instruction: { parts: [{ text: systemPrompt }] },
             contents: geminiContents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 2048,
-            },
+            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
           }),
         }
       )
       const data = await res.json()
-      if (!res.ok) {
-        return NextResponse.json({
-          error: `Erro Gemini: ${data?.error?.message || res.status}`
-        }, { status: 502 })
-      }
+      if (!res.ok)
+        return NextResponse.json({ error: `Erro Gemini: ${data?.error?.message || res.status}` }, { status: 502 })
       const content = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.'
       return NextResponse.json({ content })
     } catch (e: any) {
@@ -101,7 +92,7 @@ export async function POST(request: NextRequest) {
     'OpenAI-Beta': 'assistants=v2',
   }
 
-  // ── ASSISTANTS API ──────────────────────────────────────────────
+  // ── ASSISTANTS API (Assis) ───────────────────────────────────────
   if (assistantId) {
     try {
       let currentThreadId = threadId
@@ -166,10 +157,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── FALLBACK: Chat Completions simples ──────────────────────────
+  // ── FALLBACK: Chat Completions ───────────────────────────────────
   const systemPrompt = agentDescription
     ? `Você é ${agentName}. ${agentDescription} Responda sempre em português do Brasil.`
-    : `Você é ${agentName}, um assistente do SENAI Bahia. Responda sempre em português do Brasil.`
+    : `Você é ${agentName}, assistente do SENAI Bahia. Responda sempre em português do Brasil.`
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
