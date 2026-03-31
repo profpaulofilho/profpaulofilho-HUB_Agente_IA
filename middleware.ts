@@ -10,7 +10,8 @@ export async function middleware(request: NextRequest) {
     pathname === '/mqct' ||
     pathname.startsWith('/mqct/') ||
     pathname.startsWith('/api/') ||
-    pathname.startsWith('/logout')
+    pathname.startsWith('/logout') ||
+    pathname.startsWith('/auth/')
   ) {
     return NextResponse.next()
   }

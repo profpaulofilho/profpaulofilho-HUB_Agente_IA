@@ -50,9 +50,8 @@ export default function LoginPage() {
     setLoading(true); setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError('E-mail ou senha inválidos.'); setLoading(false); return }
-    // Aguarda sessão ser persistida antes de redirecionar
-    await new Promise(r => setTimeout(r, 300))
-    window.location.href = '/admin'
+    router.refresh()
+    router.replace('/admin')
   }
 
   return (
