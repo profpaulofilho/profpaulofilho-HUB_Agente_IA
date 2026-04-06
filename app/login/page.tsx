@@ -45,23 +45,31 @@ export default function LoginPage() {
   const maxBar = topAgents[0]?.total || 1
   const COLORS = ['#3b82f6','#a78bfa','#34d399','#f472b6','#fbbf24']
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true); setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError('E-mail ou senha inválidos.'); setLoading(false); return }
-    window.location.href = '/admin'
+ async function handleLogin(e: React.FormEvent) {
+  e.preventDefault()
+  setLoading(true)
+  setError('')
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
+
+  if (error) {
+    setError(error.message || 'E-mail ou senha inválidos.')
+    setLoading(false)
+    return
   }
 
-  return (
-    <main style={{
-      minHeight: '100vh',
-      background: '#030712',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
+  if (!data.session) {
+    setError('Sessão não criada corretamente.')
+    setLoading(false)
+    return
+  }
+
+  router.replace('/admin')
+  router.refresh()
+}
       <style>{`
         @keyframes drift { 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(30px,-20px) scale(1.05)} 100%{transform:translate(0,0) scale(1)} }
         @keyframes drift2 { 0%{transform:translate(0,0)} 50%{transform:translate(-25px,15px)} 100%{transform:translate(0,0)} }
