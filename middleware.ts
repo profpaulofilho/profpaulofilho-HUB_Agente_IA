@@ -2,41 +2,34 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
   const { pathname } = request.nextUrl
 
-  // Rotas públicas — nunca interceptar
-  if (
-    pathname === '/login' ||
-    pathname === '/mqct' ||
+  const publicRoutes = ['/login', '/mqct']
+  const isPublic =
+    publicRoutes.includes(pathname) ||
     pathname.startsWith('/mqct/') ||
-    pathname.startsWith('/api/') ||
+    pathname.startsWith('/auth/') ||
     pathname.startsWith('/logout') ||
-    pathname.startsWith('/auth/')
-  ) {
-    return NextResponse.next()
-  }
-
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  })
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/_next') ||
+    pathname === '/favicon.ico'
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookieOptions: {
-        name: 'sb-session',
-        lifetime: 60 * 60 * 24 * 7,
-        domain: '',
-        path: '/',
-        sameSite: 'lax',
-      },
       cookies: {
-        getAll() { return request.cookies.getAll() },
+        getAll() {
+          return request.cookies.getAll()
+        },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            response = NextResponse.next({ request: { headers: request.headers } })
             response.cookies.set(name, value, options)
           })
         },
@@ -44,19 +37,17 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  let isLoggedIn = false
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    isLoggedIn = !!user
-  } catch {
-    isLoggedIn = false
-  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (pathname === '/') {
-    return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
+    return NextResponse.redirect(
+      new URL(user ? '/admin' : '/login', request.url)
+    )
   }
 
-  if (!isLoggedIn) {
+  if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -64,7 +55,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!.*\\..*|_next).*)'],
 }
