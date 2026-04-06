@@ -2,22 +2,24 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
-
   const { pathname } = request.nextUrl
 
-  const publicRoutes = ['/login', '/mqct']
-  const isPublic =
-    publicRoutes.includes(pathname) ||
+  if (
+    pathname === '/login' ||
+    pathname === '/mqct' ||
     pathname.startsWith('/mqct/') ||
-    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/api/') ||
     pathname.startsWith('/logout') ||
+    pathname.startsWith('/auth/') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico'
+  ) {
+    return NextResponse.next()
+  }
+
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,15 +38,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let isLoggedIn = false
 
-  if (pathname === '/') {
-    return response
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    isLoggedIn = !!user
+  } catch {
+    isLoggedIn = false
   }
 
-  if (!user && !isPublic) {
+  if (pathname === '/') {
+    return NextResponse.next()
+  }
+
+  if (!isLoggedIn) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -52,5 +61,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }
