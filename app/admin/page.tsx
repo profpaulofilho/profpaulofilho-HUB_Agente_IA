@@ -202,9 +202,19 @@ export default async function AdminPage() {
 
                       {/* Botão */}
                       {isAssis ? (
-                        <Link href={`/agentes/${agent.id}`} target="_blank" rel="noopener noreferrer" className="open-btn" style={{ padding: '10px 18px', borderRadius: 12, flexShrink: 0, background: btnBg, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: btnShadow, transition: 'transform 0.15s, opacity 0.2s', whiteSpace: 'nowrap' }}>
-                          💬 Conversar
-                        </Link>
+                        {agent.name.toLowerCase().includes('assis') ? (
+  <a
+    href="https://chatgpt.com/g/g-683701ff744c819185242b9dc7b9e902-assis-o-assistente-especialista"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    💬 Conversar
+  </a>
+) : (
+  <Link href={`/agentes/${agent.id}`} target="_blank" rel="noopener noreferrer">
+    💬 Conversar
+  </Link>
+)}
                       ) : (
                         <a href="https://gerador-descritivo-v2.onrender.com/" target="_blank" rel="noopener noreferrer" className="open-btn" style={{ padding: '10px 18px', borderRadius: 12, flexShrink: 0, background: btnBg, color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: btnShadow, transition: 'transform 0.15s, opacity 0.2s', whiteSpace: 'nowrap' }}>
                           ↗ Abrir
