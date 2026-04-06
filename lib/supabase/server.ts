@@ -23,7 +23,7 @@ export async function createClient() {
               })
             )
           } catch {
-            // Ignora em contextos read-only
+            // Ignora em Server Components read-only
           }
         },
       },

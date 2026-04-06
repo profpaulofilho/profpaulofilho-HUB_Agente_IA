@@ -43,19 +43,15 @@ export default async function AdminPage() {
   const { data: categories } = await supabase
     .from('categories').select('*').order('sort_order')
 
-  const startOfMonth = new Date()
-  startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0)
-
   const { data: logs } = await supabase
     .from('agent_access_logs')
     .select(`user_id, agent_id, accessed_at, agents (id, name, categories (id, name))`)
-    .gte('accessed_at', startOfMonth.toISOString())
 
   const totalAgents = agents?.length || 0
   const totalCategories = categories?.length || 0
   const providers = new Set((agents || []).map((a: any) => a.provider))
-  const totalMonthAccess = logs?.length || 0
-  const activeUsersMonth = new Set((logs || []).map((log: any) => log.user_id)).size
+  const totalAccess = logs?.length || 0
+  const activeUsers = new Set((logs || []).map((log: any) => log.user_id)).size
 
   const usageMap = new Map<string, number>()
   for (const log of logs || []) {
@@ -144,8 +140,8 @@ export default async function AdminPage() {
             { label: 'Agentes', value: totalAgents, icon: '🤖', color: '#60a5fa' },
             { label: 'Categorias', value: totalCategories, icon: '📁', color: '#a78bfa' },
             { label: 'Provedores', value: providers.size, icon: '⚙️', color: '#34d399' },
-            { label: 'Acessos no mês', value: totalMonthAccess, icon: '📊', color: '#f472b6' },
-            { label: 'Usuários ativos', value: activeUsersMonth, icon: '👥', color: '#fb923c' },
+            { label: 'Acessos totais', value: totalAccess, icon: '📊', color: '#f472b6' },
+            { label: 'Usuários com acesso', value: activeUsers, icon: '👥', color: '#fb923c' },
           ].map(m => (
             <div key={m.label} style={{ ...S.card, ...S.pad, textAlign: 'center' }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>{m.icon}</div>
@@ -227,7 +223,7 @@ export default async function AdminPage() {
           {/* Pizza por agente */}
           <div style={{ ...S.card, ...S.pad }}>
             <h2 style={S.h2}>Uso por agente</h2>
-            <p style={{ ...S.sub, marginBottom: 20 }}>Distribuição de acessos no mês</p>
+            <p style={{ ...S.sub, marginBottom: 20 }}>Distribuição de acessos acumulados</p>
             {topAgents.length > 0 ? (
               <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
@@ -277,7 +273,7 @@ export default async function AdminPage() {
           {/* Pizza por categoria */}
           <div style={{ ...S.card, ...S.pad }}>
             <h2 style={S.h2}>Uso por categoria</h2>
-            <p style={{ ...S.sub, marginBottom: 20 }}>Distribuição de acessos no mês</p>
+            <p style={{ ...S.sub, marginBottom: 20 }}>Distribuição de acessos acumulados</p>
             {topCategories.length > 0 ? (
               <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
@@ -329,7 +325,7 @@ export default async function AdminPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 16, marginBottom: 16 }}>
           <div style={{ ...S.card, ...S.pad }}>
             <h2 style={S.h2}>Agentes mais usados</h2>
-            <p style={{ ...S.sub, marginBottom: 20 }}>Ranking do mês atual</p>
+            <p style={{ ...S.sub, marginBottom: 20 }}>Ranking acumulado</p>
             {topAgents.length > 0 ? (
               <div style={{ display: 'grid', gap: 14 }}>
                 {topAgents.map((item, i) => (
@@ -355,7 +351,7 @@ export default async function AdminPage() {
             <div style={{ display: 'grid', gap: 10 }}>
               {[
                 { label: 'Usuário logado', value: user.email || '-' },
-                { label: 'Líder do mês', value: topAgents[0]?.name || 'Sem dados' },
+                { label: 'Líder geral', value: topAgents[0]?.name || 'Sem dados' },
                 { label: 'Acessos do líder', value: `${topAgents[0]?.total || 0} acesso(s)` },
                 { label: 'Categoria top', value: topCategories[0]?.name || 'Sem dados' },
               ].map(r => (

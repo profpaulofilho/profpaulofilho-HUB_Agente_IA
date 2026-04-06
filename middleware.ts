@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname === '/') {
-    return NextResponse.next()
+    return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
   }
 
   if (!isLoggedIn) {
@@ -62,6 +62,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
