@@ -16,7 +16,6 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/mqct/') ||
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/logout') ||
-    pathname.startsWith('/api/') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico'
 
@@ -42,9 +41,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (pathname === '/') {
-    return NextResponse.redirect(
-      new URL(user ? '/admin' : '/login', request.url)
-    )
+    return response
   }
 
   if (!user && !isPublic) {
