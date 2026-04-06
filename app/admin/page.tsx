@@ -284,7 +284,7 @@ export default async function AdminPage() {
             { label: 'Categorias', value: totalCategories, icon: '📁', color: '#a78bfa' },
             { label: 'Provedores', value: providers.size, icon: '⚙️', color: '#34d399' },
             { label: 'Acessos totais', value: totalAccess, icon: '📊', color: '#f472b6' },
-            { label: 'Usuários ativos', value: activeUsers, icon: '👥', color: '#fb923c' },
+            { label: 'Usuários com acesso', value: activeUsers, icon: '👥', color: '#fb923c' },
           ].map((m) => (
             <div key={m.label} style={{ ...S.card, ...S.pad, textAlign: 'center' }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>{m.icon}</div>
@@ -559,7 +559,7 @@ export default async function AdminPage() {
                         </a>
                       ) : (
                         <a
-                          href="https://gerador-descritivo-v2.onrender.com/"
+                          href={agent.external_url || '#'}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="open-btn"
@@ -574,6 +574,8 @@ export default async function AdminPage() {
                             boxShadow: btnShadow,
                             transition: 'transform 0.15s, opacity 0.2s',
                             whiteSpace: 'nowrap',
+                            pointerEvents: agent.external_url ? 'auto' : 'none',
+                            opacity: agent.external_url ? 1 : 0.6,
                           }}
                         >
                           ↗ Abrir
