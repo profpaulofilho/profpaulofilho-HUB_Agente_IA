@@ -1,26 +1,8 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { createClient } from '../../lib/supabase/server'
+import { requireAuthenticatedUser } from '../../lib/auth/user'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active, must_change_password')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.is_active) redirect('/login')
-  if (profile?.must_change_password) redirect('/primeiro-acesso')
+  const { supabase, user } = await requireAuthenticatedUser()
 
   const { data: agents, error } = await supabase
     .from('agents')

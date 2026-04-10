@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '../../lib/auth/admin'
 import { createAdminClient } from '../../lib/supabase/admin'
-import { sendFirstAccessEmail } from '../../lib/email/first-access'
 
 async function createUser(formData: FormData) {
   'use server'
@@ -13,7 +12,7 @@ async function createUser(formData: FormData) {
 
   const full_name = String(formData.get('full_name') || '').trim()
   const email = String(formData.get('email') || '').trim().toLowerCase()
-  const password = String(formData.get('password') || '').trim() || process.env.DEFAULT_TEMP_PASSWORD || 'senai@123'
+  const password = (process.env.DEFAULT_TEMP_PASSWORD || 'senai@123').trim()
   const role = String(formData.get('role') || 'viewer').trim()
 
   if (!full_name || !email || !role) {
@@ -44,16 +43,6 @@ async function createUser(formData: FormData) {
   if (profileError) {
     await admin.auth.admin.deleteUser(data.user.id)
     throw new Error(profileError.message)
-  }
-
-  try {
-    await sendFirstAccessEmail({
-      email,
-      full_name,
-      tempPassword: password,
-    })
-  } catch (emailError) {
-    console.error('Falha ao enviar e-mail de primeiro acesso:', emailError)
   }
 
   revalidatePath('/usuarios')
@@ -97,6 +86,14 @@ async function forcePasswordChange(formData: FormData) {
 
   const id = String(formData.get('id') || '').trim()
   if (!id) throw new Error('ID inválido.')
+
+  const tempPassword = (process.env.DEFAULT_TEMP_PASSWORD || 'senai@123').trim()
+
+  const { error: resetError } = await admin.auth.admin.updateUserById(id, {
+    password: tempPassword,
+  })
+
+  if (resetError) throw new Error(resetError.message)
 
   const { error } = await admin
     .from('profiles')
@@ -203,7 +200,7 @@ export default async function UsuariosPage() {
           <div style={eyebrow}>Gestão interna</div>
           <h1 style={title}>Gerenciar usuários</h1>
           <p style={subtitle}>
-            Novos usuários já entram com troca obrigatória. Usuários existentes
+            Novos usuários já entram com a senha temporária padrão e troca obrigatória. Usuários existentes
             também podem ser marcados manualmente com “Forçar troca”.
           </p>
 
@@ -214,7 +211,7 @@ export default async function UsuariosPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1.2fr 1fr 1fr 160px',
+                gridTemplateColumns: '1.2fr 1fr 160px',
                 gap: 12,
               }}
             >
@@ -225,17 +222,14 @@ export default async function UsuariosPage() {
                 style={inp}
               />
               <input name="email" type="email" placeholder="Email" required style={inp} />
-              <input
-                name="password"
-                type="password"
-                placeholder="Senha provisória (padrão: senai@123)"
-                defaultValue={process.env.DEFAULT_TEMP_PASSWORD || 'senai@123'}
-                style={inp}
-              />
               <select name="role" defaultValue="viewer" style={inp}>
                 <option value="viewer">viewer</option>
                 <option value="admin">admin</option>
               </select>
+            </div>
+
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+              Senha temporária padrão: <strong>senai@123</strong>
             </div>
 
             <button type="submit" style={primaryBtn}>

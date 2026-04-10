@@ -15,15 +15,11 @@ export async function requireAdmin() {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, email, role, is_active, must_change_password')
+    .select('id, role, is_active, must_change_password')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (profileError || !profile) {
-    redirect('/login')
-  }
-
-  if (!profile.is_active) {
     redirect('/login')
   }
 
@@ -31,7 +27,7 @@ export async function requireAdmin() {
     redirect('/primeiro-acesso')
   }
 
-  if (profile.role !== 'admin') {
+  if (!profile.is_active || profile.role !== 'admin') {
     redirect('/dashboard')
   }
 

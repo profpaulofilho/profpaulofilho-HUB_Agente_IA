@@ -1,16 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '../supabase/server'
 
-type RequireAuthenticatedUserOptions = {
-  allowPendingPasswordChange?: boolean
-}
-
-export async function requireAuthenticatedUser(
-  options: RequireAuthenticatedUserOptions = {}
-) {
-  const { allowPendingPasswordChange = false } = options
+export async function requireAuthenticatedUser() {
   const supabase = await createClient()
-
   const {
     data: { user },
     error: userError,
@@ -22,19 +14,15 @@ export async function requireAuthenticatedUser(
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, full_name, email, role, is_active, must_change_password')
+    .select('id, role, is_active, must_change_password')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.is_active) {
     redirect('/login')
   }
 
-  if (profile.is_active === false) {
-    redirect('/login')
-  }
-
-  if (profile.must_change_password && !allowPendingPasswordChange) {
+  if (profile.must_change_password) {
     redirect('/primeiro-acesso')
   }
 

@@ -5,7 +5,6 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const isPublicRoute =
-    pathname === '/' ||
     pathname === '/login' ||
     pathname === '/mqct' ||
     pathname.startsWith('/mqct/') ||
@@ -51,44 +50,39 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    if (!isPublicRoute) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    return response
+  if (pathname === '/') {
+    return NextResponse.redirect(
+      new URL(user ? '/admin' : '/login', request.url)
+    )
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, is_active, must_change_password')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (!profile?.is_active) {
-    if (pathname !== '/login') {
-      await supabase.auth.signOut()
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    return response
+  if (!user && !isPublicRoute) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (profile?.must_change_password) {
-    if (pathname !== '/primeiro-acesso' && !pathname.startsWith('/logout')) {
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('must_change_password')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (
+      profile?.must_change_password === true &&
+      pathname !== '/primeiro-acesso' &&
+      !pathname.startsWith('/auth/') &&
+      !pathname.startsWith('/logout')
+    ) {
       return NextResponse.redirect(new URL('/primeiro-acesso', request.url))
     }
-    return response
-  }
 
-  if (pathname === '/primeiro-acesso') {
-    return NextResponse.redirect(
-      new URL(profile?.role === 'admin' ? '/admin' : '/dashboard', request.url)
-    )
-  }
+    if (profile?.must_change_password === false && pathname === '/primeiro-acesso') {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
 
-  if (pathname === '/' || pathname === '/login') {
-    return NextResponse.redirect(
-      new URL(profile?.role === 'admin' ? '/admin' : '/dashboard', request.url)
-    )
+    if (pathname === '/login') {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
   }
 
   return response
@@ -96,6 +90,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
