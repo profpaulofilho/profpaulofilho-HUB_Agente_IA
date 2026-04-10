@@ -65,10 +65,10 @@ export async function middleware(request: NextRequest) {
       .from('profiles')
       .select('must_change_password')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     if (
-      profile?.must_change_password &&
+      profile?.must_change_password === true &&
       pathname !== '/primeiro-acesso' &&
       !pathname.startsWith('/auth/') &&
       !pathname.startsWith('/logout')
@@ -76,7 +76,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/primeiro-acesso', request.url))
     }
 
-    if (!profile?.must_change_password && pathname === '/primeiro-acesso') {
+    if (profile?.must_change_password === false && pathname === '/primeiro-acesso') {
       return NextResponse.redirect(new URL('/admin', request.url))
     }
 
