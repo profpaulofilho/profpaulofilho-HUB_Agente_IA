@@ -58,13 +58,33 @@ export default function LoginPage() {
       return
     }
 
-    if (!data.session) {
+    if (!data.session || !data.user) {
       setError('Sessão não criada corretamente.')
       setLoading(false)
       return
     }
 
-    router.replace('/admin')
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('must_change_password, is_active')
+      .eq('id', data.user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      setError(profileError.message || 'Não foi possível validar o acesso do usuário.')
+      await supabase.auth.signOut()
+      setLoading(false)
+      return
+    }
+
+    if (profile?.is_active === false) {
+      await supabase.auth.signOut()
+      setError('Seu acesso está inativo. Procure um administrador.')
+      setLoading(false)
+      return
+    }
+
+    router.replace(profile?.must_change_password ? '/primeiro-acesso' : '/admin')
     router.refresh()
   }
 

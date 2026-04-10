@@ -60,29 +60,42 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('must_change_password')
-      .eq('id', user.id)
-      .maybeSingle()
+  if (!user) {
+    return response
+  }
 
-    if (
-      profile?.must_change_password === true &&
-      pathname !== '/primeiro-acesso' &&
-      !pathname.startsWith('/auth/') &&
-      !pathname.startsWith('/logout')
-    ) {
-      return NextResponse.redirect(new URL('/primeiro-acesso', request.url))
-    }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('must_change_password, is_active')
+    .eq('id', user.id)
+    .maybeSingle()
 
-    if (profile?.must_change_password === false && pathname === '/primeiro-acesso') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
+  if (profile?.is_active === false && pathname !== '/login') {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
-    if (pathname === '/login') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
+  const isPrimeiroAcesso = pathname === '/primeiro-acesso'
+
+  if (
+    profile?.must_change_password === true &&
+    !isPrimeiroAcesso &&
+    !pathname.startsWith('/auth/') &&
+    !pathname.startsWith('/logout')
+  ) {
+    return NextResponse.redirect(new URL('/primeiro-acesso', request.url))
+  }
+
+  if (profile?.must_change_password === false && isPrimeiroAcesso) {
+    return NextResponse.redirect(new URL('/admin', request.url))
+  }
+
+  if (pathname === '/login') {
+    return NextResponse.redirect(
+      new URL(
+        profile?.must_change_password ? '/primeiro-acesso' : '/admin',
+        request.url
+      )
+    )
   }
 
   return response
