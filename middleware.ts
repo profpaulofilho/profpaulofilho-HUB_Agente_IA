@@ -4,21 +4,19 @@ import { createServerClient } from '@supabase/ssr'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (
+  const isPublicRoute =
     pathname === '/login' ||
     pathname === '/mqct' ||
     pathname.startsWith('/mqct/') ||
-    pathname.startsWith('/api/') ||
-    pathname.startsWith('/logout') ||
     pathname.startsWith('/auth/') ||
+    pathname.startsWith('/api/') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico'
-  ) {
-    return NextResponse.next()
-  }
 
   let response = NextResponse.next({
-    request: { headers: request.headers },
+    request: {
+      headers: request.headers,
+    },
   })
 
   const supabase = createServerClient(
@@ -30,6 +28,16 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value)
+          })
+
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options)
           })
@@ -38,23 +46,43 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  let isLoggedIn = false
-
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    isLoggedIn = !!user
-  } catch {
-    isLoggedIn = false
-  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (pathname === '/') {
-    return NextResponse.redirect(new URL(isLoggedIn ? '/admin' : '/login', request.url))
+    return NextResponse.redirect(
+      new URL(user ? '/admin' : '/login', request.url)
+    )
   }
 
-  if (!isLoggedIn) {
+  if (!user && !isPublicRoute) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('must_change_password')
+      .eq('id', user.id)
+      .single()
+
+    if (
+      profile?.must_change_password &&
+      pathname !== '/primeiro-acesso' &&
+      !pathname.startsWith('/auth/') &&
+      !pathname.startsWith('/logout')
+    ) {
+      return NextResponse.redirect(new URL('/primeiro-acesso', request.url))
+    }
+
+    if (!profile?.must_change_password && pathname === '/primeiro-acesso') {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
+
+    if (pathname === '/login') {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
   }
 
   return response
@@ -62,6 +90,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
