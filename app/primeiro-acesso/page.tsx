@@ -79,16 +79,13 @@ export default async function PrimeiroAcessoPage() {
     <main style={{ minHeight: '100vh', background: '#05080f', padding: '24px' }}>
       <div style={{ maxWidth: 520, margin: '60px auto' }}>
         <div style={card}>
-          <div style={eyebrow}>Primeiro acesso</div>
-          <h1 style={title}>Troque sua senha</h1>
+          <div style={eyebrow}>Troca obrigatória</div>
+          <h1 style={title}>Defina uma nova senha</h1>
           <p style={subtitle}>
-            Por segurança, você precisa definir uma nova senha antes de continuar.
+            Seu acesso está liberado, mas antes você precisa trocar a senha.
           </p>
 
-          <form
-            action={updatePassword}
-            style={{ display: 'grid', gap: 16, marginTop: 24 }}
-          >
+          <form action={updatePassword} style={{ display: 'grid', gap: 16, marginTop: 24 }}>
             <div>
               <label style={label}>Nova senha</label>
               <input name="password" type="password" required style={input} />
@@ -96,12 +93,7 @@ export default async function PrimeiroAcessoPage() {
 
             <div>
               <label style={label}>Confirmar nova senha</label>
-              <input
-                name="confirmPassword"
-                type="password"
-                required
-                style={input}
-              />
+              <input name="confirmPassword" type="password" required style={input} />
             </div>
 
             <button type="submit" style={button}>
