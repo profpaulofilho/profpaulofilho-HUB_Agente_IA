@@ -11,9 +11,7 @@ async function createUser(formData: FormData) {
   const admin = createAdminClient()
 
   const full_name = String(formData.get('full_name') || '').trim()
-  const email = String(formData.get('email') || '')
-    .trim()
-    .toLowerCase()
+  const email = String(formData.get('email') || '').trim().toLowerCase()
   const password = String(formData.get('password') || '').trim()
   const role = String(formData.get('role') || 'viewer').trim()
 
@@ -80,6 +78,50 @@ async function updateUser(formData: FormData) {
   revalidatePath('/usuarios')
 }
 
+async function forcePasswordChange(formData: FormData) {
+  'use server'
+
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const id = String(formData.get('id') || '').trim()
+  if (!id) throw new Error('ID inválido.')
+
+  const { error } = await admin
+    .from('profiles')
+    .update({
+      must_change_password: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/usuarios')
+}
+
+async function clearForcedPasswordChange(formData: FormData) {
+  'use server'
+
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const id = String(formData.get('id') || '').trim()
+  if (!id) throw new Error('ID inválido.')
+
+  const { error } = await admin
+    .from('profiles')
+    .update({
+      must_change_password: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/usuarios')
+}
+
 async function deleteUser(formData: FormData) {
   'use server'
 
@@ -116,7 +158,7 @@ export default async function UsuariosPage() {
         }
       `}</style>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1150, margin: '0 auto' }}>
         <div
           style={{
             display: 'flex',
@@ -150,8 +192,8 @@ export default async function UsuariosPage() {
           <div style={eyebrow}>Gestão interna</div>
           <h1 style={title}>Gerenciar usuários</h1>
           <p style={subtitle}>
-            Novos usuários serão criados com senha provisória e obrigados a
-            trocar a senha no primeiro login.
+            Novos usuários já entram com troca obrigatória. Usuários existentes
+            também podem ser marcados manualmente com “Forçar troca”.
           </p>
 
           <form
@@ -266,28 +308,34 @@ export default async function UsuariosPage() {
                   </div>
 
                   {p.must_change_password && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        background: 'rgba(234,179,8,0.12)',
-                        border: '1px solid rgba(234,179,8,0.22)',
-                        color: '#fde68a',
-                        borderRadius: 20,
-                        padding: '3px 8px',
-                      }}
-                    >
-                      troca de senha pendente
-                    </span>
+                    <span style={warningTag}>troca de senha pendente</span>
                   )}
                 </div>
 
-                <form action={deleteUser}>
-                  <input type="hidden" name="id" value={p.id} />
-                  <button type="submit" style={dangerBtn}>
-                    Remover usuário
-                  </button>
-                </form>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {p.must_change_password ? (
+                    <form action={clearForcedPasswordChange}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <button type="submit" style={neutralBtn}>
+                        Liberar acesso
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={forcePasswordChange}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <button type="submit" style={forceBtn}>
+                        Forçar troca
+                      </button>
+                    </form>
+                  )}
+
+                  <form action={deleteUser}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <button type="submit" style={dangerBtn}>
+                      Remover usuário
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           ))}
@@ -369,6 +417,26 @@ const secondaryBtn: CSSProperties = {
   cursor: 'pointer',
 }
 
+const forceBtn: CSSProperties = {
+  background: 'rgba(234,179,8,0.12)',
+  border: '1px solid rgba(234,179,8,0.22)',
+  color: '#fde68a',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontWeight: 700,
+  cursor: 'pointer',
+}
+
+const neutralBtn: CSSProperties = {
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  color: 'rgba(255,255,255,0.8)',
+  borderRadius: 10,
+  padding: '10px 14px',
+  fontWeight: 700,
+  cursor: 'pointer',
+}
+
 const dangerBtn: CSSProperties = {
   background: 'rgba(239,68,68,0.1)',
   border: '1px solid rgba(239,68,68,0.25)',
@@ -404,4 +472,14 @@ const errorBox: CSSProperties = {
   color: '#fca5a5',
   fontSize: 13,
   marginBottom: 16,
+}
+
+const warningTag: CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  background: 'rgba(234,179,8,0.12)',
+  border: '1px solid rgba(234,179,8,0.22)',
+  color: '#fde68a',
+  borderRadius: 20,
+  padding: '3px 8px',
 }
