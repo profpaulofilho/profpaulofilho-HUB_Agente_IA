@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { requireAdmin } from '../../lib/auth/admin'
+import { redirect } from 'next/navigation'
+import { createClient } from '../../lib/supabase/server'
 
 function isAssisAgent(name: string) {
   return name.toLowerCase().includes('assis')
@@ -12,7 +13,23 @@ function isClaudeFeatured(agent: any) {
 }
 
 export default async function AdminPage() {
-  const { supabase, user } = await requireAdmin()
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, is_active, must_change_password')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.is_active) redirect('/login')
+  if (profile?.must_change_password) redirect('/primeiro-acesso')
+  if (profile?.role !== 'admin') redirect('/dashboard')
 
   const { data: agents } = await supabase
     .from('agents')

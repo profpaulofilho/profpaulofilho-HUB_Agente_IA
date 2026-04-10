@@ -1,13 +1,11 @@
 import type { CSSProperties } from 'react'
 import { redirect } from 'next/navigation'
-import { requireAuthenticatedUser } from '../../lib/auth/user'
+import { createClient } from '../../lib/supabase/server'
 
 async function updatePassword(formData: FormData) {
   'use server'
 
-  const { supabase, user } = await requireAuthenticatedUser({
-    allowPendingPasswordChange: true,
-  })
+  const supabase = await createClient()
 
   const password = String(formData.get('password') || '').trim()
   const confirmPassword = String(formData.get('confirmPassword') || '').trim()
@@ -22,6 +20,15 @@ async function updatePassword(formData: FormData) {
 
   if (password !== confirmPassword) {
     throw new Error('As senhas não coincidem.')
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    redirect('/login')
   }
 
   const { error: passwordError } = await supabase.auth.updateUser({
@@ -48,11 +55,23 @@ async function updatePassword(formData: FormData) {
 }
 
 export default async function PrimeiroAcessoPage() {
-  const { profile } = await requireAuthenticatedUser({
-    allowPendingPasswordChange: true,
-  })
+  const supabase = await createClient()
 
-  if (!profile.must_change_password) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('must_change_password')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.must_change_password) {
     redirect('/admin')
   }
 

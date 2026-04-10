@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { requireAdmin } from '../../lib/auth/admin'
 import { createAdminClient } from '../../lib/supabase/admin'
 import { sendFirstAccessEmail } from '../../lib/email/first-access'
-import { DEFAULT_TEMP_PASSWORD } from '../../lib/config'
 
 async function createUser(formData: FormData) {
   'use server'
@@ -14,8 +13,8 @@ async function createUser(formData: FormData) {
 
   const full_name = String(formData.get('full_name') || '').trim()
   const email = String(formData.get('email') || '').trim().toLowerCase()
+  const password = String(formData.get('password') || '').trim() || process.env.DEFAULT_TEMP_PASSWORD || 'senai@123'
   const role = String(formData.get('role') || 'viewer').trim()
-  const password = DEFAULT_TEMP_PASSWORD
 
   if (!full_name || !email || !role) {
     throw new Error('Preencha todos os campos obrigatórios.')
@@ -47,11 +46,15 @@ async function createUser(formData: FormData) {
     throw new Error(profileError.message)
   }
 
-  await sendFirstAccessEmail({
-    to: email,
-    fullName: full_name,
-    temporaryPassword: password,
-  })
+  try {
+    await sendFirstAccessEmail({
+      email,
+      full_name,
+      tempPassword: password,
+    })
+  } catch (emailError) {
+    console.error('Falha ao enviar e-mail de primeiro acesso:', emailError)
+  }
 
   revalidatePath('/usuarios')
 }
@@ -86,25 +89,14 @@ async function updateUser(formData: FormData) {
   revalidatePath('/usuarios')
 }
 
-async function resetUserFirstAccess(formData: FormData) {
+async function forcePasswordChange(formData: FormData) {
   'use server'
 
   await requireAdmin()
   const admin = createAdminClient()
 
   const id = String(formData.get('id') || '').trim()
-  const email = String(formData.get('email') || '').trim().toLowerCase()
-  const full_name = String(formData.get('full_name') || '').trim()
-
-  if (!id || !email || !full_name) throw new Error('Dados inválidos.')
-
-  const { error: authError } = await admin.auth.admin.updateUserById(id, {
-    password: DEFAULT_TEMP_PASSWORD,
-    email_confirm: true,
-    user_metadata: { full_name },
-  })
-
-  if (authError) throw new Error(authError.message)
+  if (!id) throw new Error('ID inválido.')
 
   const { error } = await admin
     .from('profiles')
@@ -115,12 +107,6 @@ async function resetUserFirstAccess(formData: FormData) {
     .eq('id', id)
 
   if (error) throw new Error(error.message)
-
-  await sendFirstAccessEmail({
-    to: email,
-    fullName: full_name,
-    temporaryPassword: DEFAULT_TEMP_PASSWORD,
-  })
 
   revalidatePath('/usuarios')
 }
@@ -217,9 +203,8 @@ export default async function UsuariosPage() {
           <div style={eyebrow}>Gestão interna</div>
           <h1 style={title}>Gerenciar usuários</h1>
           <p style={subtitle}>
-            Novos usuários recebem a senha padrão, entram com troca obrigatória
-            e recebem e-mail com instruções. Usuários existentes também podem ter
-            o primeiro acesso resetado.
+            Novos usuários já entram com troca obrigatória. Usuários existentes
+            também podem ser marcados manualmente com “Forçar troca”.
           </p>
 
           <form
@@ -229,7 +214,7 @@ export default async function UsuariosPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1.3fr 1fr 160px',
+                gridTemplateColumns: '1.2fr 1fr 1fr 160px',
                 gap: 12,
               }}
             >
@@ -239,16 +224,18 @@ export default async function UsuariosPage() {
                 required
                 style={inp}
               />
-              <input name="email" type="email" placeholder="Email institucional" required style={inp} />
+              <input name="email" type="email" placeholder="Email" required style={inp} />
+              <input
+                name="password"
+                type="password"
+                placeholder="Senha provisória (padrão: senai@123)"
+                defaultValue={process.env.DEFAULT_TEMP_PASSWORD || 'senai@123'}
+                style={inp}
+              />
               <select name="role" defaultValue="viewer" style={inp}>
                 <option value="viewer">viewer</option>
                 <option value="admin">admin</option>
               </select>
-            </div>
-
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-              Senha temporária padrão: <strong style={{ color: '#fff' }}>{DEFAULT_TEMP_PASSWORD}</strong>.
-              Após criar o usuário, o sistema enviará um e-mail com essas instruções.
             </div>
 
             <button type="submit" style={primaryBtn}>
@@ -345,12 +332,10 @@ export default async function UsuariosPage() {
                       </button>
                     </form>
                   ) : (
-                    <form action={resetUserFirstAccess}>
+                    <form action={forcePasswordChange}>
                       <input type="hidden" name="id" value={p.id} />
-                      <input type="hidden" name="email" value={p.email || ''} />
-                      <input type="hidden" name="full_name" value={p.full_name || ''} />
                       <button type="submit" style={forceBtn}>
-                        Resetar primeiro acesso
+                        Forçar troca
                       </button>
                     </form>
                   )}

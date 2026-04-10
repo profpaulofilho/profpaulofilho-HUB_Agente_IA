@@ -1,16 +1,39 @@
 import { redirect } from 'next/navigation'
-import { requireAuthenticatedUser } from './user'
+import { createClient } from '../supabase/server'
 
-type RequireAdminOptions = {
-  allowPendingPasswordChange?: boolean
-}
+export async function requireAdmin() {
+  const supabase = await createClient()
 
-export async function requireAdmin(options: RequireAdminOptions = {}) {
-  const ctx = await requireAuthenticatedUser(options)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
 
-  if (ctx.profile.role !== 'admin') {
+  if (userError || !user) {
+    redirect('/login')
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, email, role, is_active, must_change_password')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile) {
+    redirect('/login')
+  }
+
+  if (!profile.is_active) {
+    redirect('/login')
+  }
+
+  if (profile.must_change_password) {
+    redirect('/primeiro-acesso')
+  }
+
+  if (profile.role !== 'admin') {
     redirect('/dashboard')
   }
 
-  return ctx
+  return { supabase, user, profile }
 }

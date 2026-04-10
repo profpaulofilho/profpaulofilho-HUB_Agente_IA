@@ -1,79 +1,55 @@
-import { APP_URL } from '../config'
+export async function sendFirstAccessEmail(params: {
+  email: string
+  full_name: string
+  tempPassword: string
+}) {
+  const apiKey = process.env.RESEND_API_KEY
+  const from = process.env.RESEND_FROM_EMAIL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || ''
 
-type FirstAccessEmailPayload = {
-  to: string
-  fullName: string
-  temporaryPassword: string
+  if (!apiKey || !from) {
+    return { skipped: true }
+  }
+
+  const body = {
+    from,
+    to: [params.email],
+    subject: 'Acesso ao Hub de Agentes IA',
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6">
+        <h2>Olá, ${escapeHtml(params.full_name || params.email)}.</h2>
+        <p>Seu acesso ao Hub de Agentes IA foi criado.</p>
+        <p><strong>E-mail:</strong> ${escapeHtml(params.email)}<br/>
+        <strong>Senha provisória:</strong> ${escapeHtml(params.tempPassword)}</p>
+        <p>No primeiro acesso, o sistema solicitará a definição de uma nova senha.</p>
+        ${appUrl ? `<p><a href="${appUrl}">Acessar o sistema</a></p>` : ''}
+        <p>Atenciosamente,<br/>Equipe SENAI</p>
+      </div>
+    `,
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Falha ao enviar e-mail: ${text}`)
+  }
+
+  return res.json()
 }
 
-function escapeHtml(value: string) {
-  return value
+function escapeHtml(input: string) {
+  return input
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
-}
-
-export async function sendFirstAccessEmail({
-  to,
-  fullName,
-  temporaryPassword,
-}: FirstAccessEmailPayload) {
-  const resendApiKey = process.env.RESEND_API_KEY
-  const from = process.env.RESEND_FROM_EMAIL
-
-  if (!resendApiKey || !from) {
-    console.warn(
-      '[email] RESEND_API_KEY ou RESEND_FROM_EMAIL não configurados. E-mail não enviado.'
-    )
-    return { sent: false as const, provider: 'none' as const }
-  }
-
-  const safeName = escapeHtml(fullName)
-  const safeEmail = escapeHtml(to)
-  const safePassword = escapeHtml(temporaryPassword)
-  const safeUrl = escapeHtml(APP_URL)
-
-  const subject = 'Acesso criado - Hub de Agentes IA'
-  const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-      <h2 style="margin-bottom:8px">Olá, ${safeName}.</h2>
-      <p>Seu acesso ao <strong>Hub de Agentes IA</strong> foi criado com sucesso.</p>
-      <p><strong>Dados de acesso:</strong></p>
-      <ul>
-        <li><strong>E-mail:</strong> ${safeEmail}</li>
-        <li><strong>Senha provisória:</strong> ${safePassword}</li>
-      </ul>
-      <p>No primeiro acesso, o sistema irá redirecionar automaticamente para a página de definição de nova senha.</p>
-      <p>
-        <a href="${safeUrl}" style="display:inline-block;padding:12px 18px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700">
-          Acessar o sistema
-        </a>
-      </p>
-      <p>Se você não solicitou este acesso, desconsidere esta mensagem.</p>
-      <p style="margin-top:24px">Equipe SENAI Bahia</p>
-    </div>
-  `
-
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from,
-      to,
-      subject,
-      html,
-    }),
-  })
-
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`Falha ao enviar e-mail: ${body}`)
-  }
-
-  return { sent: true as const, provider: 'resend' as const }
+    .replaceAll("'", '&#39;')
 }

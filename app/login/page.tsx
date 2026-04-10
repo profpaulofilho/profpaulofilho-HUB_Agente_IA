@@ -47,13 +47,15 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
+    const normalizedEmail = email.trim().toLowerCase()
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     })
 
     if (error) {
-      setError(error.message || 'E-mail ou senha inválidos.')
+      setError(error.message === 'Invalid login credentials' ? 'E-mail ou senha inválidos.' : (error.message || 'E-mail ou senha inválidos.'))
       setLoading(false)
       return
     }
@@ -66,25 +68,24 @@ export default function LoginPage() {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('must_change_password, is_active')
+      .select('role, is_active, must_change_password')
       .eq('id', data.user.id)
       .maybeSingle()
 
     if (profileError) {
-      setError(profileError.message || 'Não foi possível validar o acesso do usuário.')
-      await supabase.auth.signOut()
+      setError('Login realizado, mas não foi possível validar o perfil.')
       setLoading(false)
       return
     }
 
-    if (profile?.is_active === false) {
+    if (!profile?.is_active) {
       await supabase.auth.signOut()
-      setError('Seu acesso está inativo. Procure um administrador.')
+      setError('Seu usuário está inativo.')
       setLoading(false)
       return
     }
 
-    router.replace(profile?.must_change_password ? '/primeiro-acesso' : '/admin')
+    router.replace(profile?.must_change_password ? '/primeiro-acesso' : profile?.role === 'admin' ? '/admin' : '/dashboard')
     router.refresh()
   }
 
